@@ -1,0 +1,142 @@
+{% extends "report_base.html" %}
+
+{% block title %}گزارش موجودی | سامانه انبارداری{% endblock %}
+{% block page_subtitle %}موجودی فعلی هر رنگ و سایز، همراه با ارزش و وضعیت{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  /* فقط ریسپانسیو همین صفحه؛ بقیه‌ی استایل‌ها از report_base می‌آید */
+  @media (max-width: 700px) {
+    /* ۵ کارت آمار: کارت آخر کل عرض را می‌گیرد تا خالی نماند */
+    .stats .stat:last-child { grid-column: 1 / -1; }
+
+    /* جدول ۹ ستونه: ستون «محصول» هنگام اسکرول افقی ثابت می‌ماند */
+    .report th:first-child,
+    .report td:first-child:not(.empty) {
+      position: sticky; right: 0; z-index: 1;
+      background: #141925;
+      box-shadow: -1px 0 0 var(--border) inset;
+      max-width: 150px; overflow: hidden; text-overflow: ellipsis;
+    }
+    .report thead th:first-child { z-index: 2; }
+    .report tbody tr:hover td:first-child:not(.empty) { background: #141925; }
+  }
+</style>
+{% endblock %}
+
+{% block report_content %}
+{# فیلترها یک فرم GET ساده‌اند و بدون جاوااسکریپت کار می‌کنند #}
+<form method="get" class="card filters" role="search">
+  <div class="f grow">
+    <label class="t" for="f-q">جستجو</label>
+    <input type="search" id="f-q" name="q" value="{{ filters.q }}" placeholder="نام محصول، کد مدل، کد کالا، بارکد یا برند...">
+  </div>
+  <div class="f">
+    <label class="t" for="f-cat">دسته‌بندی</label>
+    <select id="f-cat" name="category">
+      <option value="">همه دسته‌بندی‌ها</option>
+      {% for c in categories %}
+        <option value="{{ c.pk }}" {% if filters.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="f">
+    <label class="t" for="f-gender">جنسیت</label>
+    <select id="f-gender" name="gender">
+      <option value="">همه</option>
+      {% for value, label in genders %}
+        <option value="{{ value }}" {% if filters.gender == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="f">
+    <label class="t" for="f-status">وضعیت موجودی</label>
+    <select id="f-status" name="status">
+      <option value="">همه وضعیت‌ها</option>
+      <option value="ok"  {% if filters.status == 'ok' %}selected{% endif %}>موجودی کافی</option>
+      <option value="low" {% if filters.status == 'low' %}selected{% endif %}>کم‌موجود</option>
+      <option value="out" {% if filters.status == 'out' %}selected{% endif %}>ناموجود</option>
+    </select>
+  </div>
+  <label class="check">
+    <input type="checkbox" name="inactive" value="1" {% if filters.inactive %}checked{% endif %}>
+    شامل غیرفعال‌ها
+  </label>
+  <div class="btns">
+    <button type="submit" class="btn-sm">اعمال فیلتر</button>
+    {% if has_filters %}<a href="{% url 'application:report_stock' %}" class="btn-sm ghost">پاک کردن</a>{% endif %}
+  </div>
+</form>
+
+<section class="stats">
+  <div class="card stat">
+    <span>تعداد ترکیب رنگ/سایز</span>
+    <b>{{ summary.count }}</b>
+    <small>مطابق فیلتر فعلی</small>
+  </div>
+  <div class="card stat">
+    <span>موجودی کل</span>
+    <b>{{ summary.stock }}</b>
+    <small>عدد کالا</small>
+  </div>
+  <div class="card stat">
+    <span>ارزش موجودی</span>
+    <b>{{ summary.value|floatformat:"0g" }}</b>
+    <small>تومان (بر اساس قیمت واحد)</small>
+  </div>
+  <div class="card stat {% if summary.low %}warn{% endif %}">
+    <span>کم‌موجود</span>
+    <b>{{ summary.low }}</b>
+    <small>ترکیب نزدیک به حداقل</small>
+  </div>
+  <div class="card stat {% if summary.out %}bad{% endif %}">
+    <span>ناموجود</span>
+    <b>{{ summary.out }}</b>
+    <small>ترکیب با موجودی صفر</small>
+  </div>
+</section>
+
+<section class="card panel">
+  <div class="panel-head">
+    <h2>موجودی هر رنگ و سایز <small>({{ total_count }} ترکیب)</small></h2>
+    <a href="?{{ querystring }}{% if querystring %}&{% endif %}export=csv" class="btn-sm export">
+      <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+      خروجی Excel (CSV)
+    </a>
+  </div>
+
+  <div class="table-scroll">
+    <table class="report">
+      <thead>
+        <tr>
+          <th>محصول</th><th>رنگ</th><th>سایز</th><th>کد کالا</th>
+          <th class="num">موجودی</th><th class="num">حداقل</th><th>وضعیت</th>
+          <th class="num">قیمت واحد</th><th class="num">ارزش موجودی</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in page_obj %}
+          <tr>
+            <td><a href="{% url 'application:product_detail' v.product_id %}">{{ v.product.name }}</a></td>
+            <td><span class="swatch" style="background: {{ v.color.hex_code }}"></span>{{ v.color.name }}</td>
+            <td>{{ v.size.name }}</td>
+            <td dir="ltr" style="text-align: right; color: var(--muted);">{{ v.sku }}</td>
+            <td class="num"><b>{{ v.stock }}</b></td>
+            <td class="num">{{ v.min_stock }}</td>
+            <td><span class="badge b-{{ v.status_key }}">{{ v.status_label }}</span></td>
+            <td class="num">{{ v.unit|floatformat:"0g" }}</td>
+            <td class="num">{{ v.value|floatformat:"0g" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="9" class="empty">
+            {% if has_filters %}موردی با این فیلترها پیدا نشد.{% else %}هنوز محصولی با رنگ و سایز ثبت نشده است.{% endif %}
+          </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% include "includes/pager.html" %}
+</section>
+{% endblock %}

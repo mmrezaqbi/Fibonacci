@@ -1,0 +1,148 @@
+    :root {
+      --bg: #0b0e14;
+      --card: rgba(22, 27, 38, .72);
+      --border: rgba(255, 255, 255, .08);
+      --text: #e6e9f0;
+      --muted: #8b93a7;
+      --input: #10141d;
+      --primary: #6c8cff;
+      --primary-2: #8b5cf6;
+      --danger: #ff6b7a;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: Vazirmatn, "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      overflow-x: hidden;
+      position: relative;
+    }
+    /* پس‌زمینه */
+    body::before, body::after {
+      content: "";
+      position: fixed;
+      width: 520px; height: 520px;
+      border-radius: 50%;
+      filter: blur(110px);
+      opacity: .35;
+      z-index: 0;
+      pointer-events: none;
+    }
+    body::before { background: var(--primary); top: -160px; right: -120px; }
+    body::after  { background: var(--primary-2); bottom: -180px; left: -140px; }
+
+    .card {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 410px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 38px 32px 30px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .55);
+      animation: rise .6s ease both;
+    }
+    @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+
+    .logo {
+      width: 58px; height: 58px;
+      margin: 0 auto 18px;
+      border-radius: 16px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 10px 30px rgba(108, 140, 255, .35);
+    }
+    .logo svg { width: 30px; height: 30px; stroke: #fff; }
+    h1 { text-align: center; font-size: 1.5rem; font-weight: 700; }
+    .sub { text-align: center; color: var(--muted); font-size: .9rem; margin: 6px 0 26px; }
+
+    .alert {
+      background: rgba(255, 107, 122, .1);
+      border: 1px solid rgba(255, 107, 122, .35);
+      color: var(--danger);
+      padding: 11px 14px;
+      border-radius: 10px;
+      font-size: .88rem;
+      margin-bottom: 18px;
+    }
+
+    .field { margin-bottom: 18px; }
+    .field label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 7px; }
+    .control { position: relative; }
+    .control .icon {
+      position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
+      width: 19px; height: 19px; stroke: var(--muted); pointer-events: none;
+      transition: stroke .2s;
+    }
+    .control input {
+      width: 100%;
+      background: var(--input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font: inherit;
+      padding: 13px 44px 13px 44px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .control input::placeholder { color: #565e72; }
+    .control input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(108, 140, 255, .16);
+    }
+    .control:focus-within .icon { stroke: var(--primary); }
+    .control input[name="username"], .control input[name="password"] { direction: ltr; text-align: left; }
+    .control input[name="username"]::placeholder, .control input[name="password"]::placeholder { direction: rtl; text-align: right; }
+
+    .toggle {
+      position: absolute; top: 50%; left: 8px; transform: translateY(-50%);
+      background: none; border: 0; cursor: pointer;
+      width: 34px; height: 34px; border-radius: 8px;
+      display: grid; place-items: center;
+      color: var(--muted);
+    }
+    .toggle:hover { background: rgba(255, 255, 255, .06); color: var(--text); }
+    .toggle svg { width: 19px; height: 19px; stroke: currentColor; }
+
+    .caps { display: none; color: #f5b84b; font-size: .78rem; margin-top: 6px; }
+    .caps.show { display: block; }
+
+    .row { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 22px; font-size: .85rem; }
+    .check { display: flex; align-items: center; gap: 8px; color: var(--muted); cursor: pointer; }
+    .check input { accent-color: var(--primary); width: 16px; height: 16px; }
+    .row a { color: var(--primary); text-decoration: none; }
+    .row a:hover { text-decoration: underline; }
+
+    .btn {
+      width: 100%;
+      border: 0; cursor: pointer;
+      font: inherit; font-weight: 600; font-size: 1rem;
+      color: #fff;
+      padding: 13px;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 10px 28px rgba(108, 140, 255, .3);
+      transition: transform .15s, box-shadow .2s, opacity .2s;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 14px 34px rgba(108, 140, 255, .42); }
+    .btn:active { transform: translateY(0); }
+    .btn.loading { opacity: .8; cursor: progress; }
+    .btn .spin {
+      display: none; width: 18px; height: 18px;
+      border: 2px solid rgba(255, 255, 255, .35); border-top-color: #fff;
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    .btn.loading .spin { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .foot { text-align: center; color: #5b6376; font-size: .78rem; margin-top: 24px; }
+
+    @media (max-width: 440px) { .card { padding: 30px 22px 24px; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

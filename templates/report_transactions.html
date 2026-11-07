@@ -1,0 +1,133 @@
+{% extends "report_base.html" %}
+{% load jalali_tags %}
+
+{% block title %}گزارش تراکنش‌ها | سامانه انبارداری{% endblock %}
+{% block page_subtitle %}همه‌ی ورودها و خروج‌ها با فیلتر تاریخ، نوع و انبار{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  /* فقط ریسپانسیو همین صفحه؛ بقیه‌ی استایل‌ها از report_base می‌آید */
+  @media (max-width: 700px) {
+    /* از تاریخ / تا تاریخ و نوع / انبار: دوتا دوتا کنار هم */
+    .filters .f:nth-child(n+2):nth-child(-n+5) { flex: 1 1 calc(50% - 6px); }
+  }
+  @media (max-width: 400px) {
+    .filters .f:nth-child(n+2):nth-child(-n+5) { flex: 1 1 100%; }
+  }
+</style>
+{% endblock %}
+
+{% block report_content %}
+{# فیلترها یک فرم GET ساده‌اند و بدون جاوااسکریپت کار می‌کنند #}
+<form method="get" class="card filters" role="search">
+  <div class="f grow">
+    <label class="t" for="f-q">جستجو</label>
+    <input type="search" id="f-q" name="q" value="{{ filters.q }}" placeholder="نام محصول، کد کالا یا توضیحات...">
+  </div>
+  <div class="f">
+    <label class="t" for="f-from">از تاریخ (شمسی)</label>
+    <input type="text" id="f-from" name="date_from" value="{{ filters.date_from }}"
+           placeholder="1405/08/01" dir="ltr" inputmode="numeric" maxlength="10" autocomplete="off">
+  </div>
+  <div class="f">
+    <label class="t" for="f-to">تا تاریخ (شمسی)</label>
+    <input type="text" id="f-to" name="date_to" value="{{ filters.date_to }}"
+           placeholder="1405/08/30" dir="ltr" inputmode="numeric" maxlength="10" autocomplete="off">
+  </div>
+  <div class="f">
+    <label class="t" for="f-type">نوع</label>
+    <select id="f-type" name="type">
+      <option value="">ورود و خروج</option>
+      <option value="in"  {% if filters.type == 'in' %}selected{% endif %}>فقط ورود</option>
+      <option value="out" {% if filters.type == 'out' %}selected{% endif %}>فقط خروج</option>
+    </select>
+  </div>
+  <div class="f">
+    <label class="t" for="f-wh">انبار</label>
+    <select id="f-wh" name="warehouse">
+      <option value="">همه انبارها</option>
+      {% for w in warehouses %}
+        <option value="{{ w.pk }}" {% if filters.warehouse == w.pk|stringformat:"s" %}selected{% endif %}>{{ w.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="btns">
+    <button type="submit" class="btn-sm">اعمال فیلتر</button>
+    {% if has_filters %}<a href="{% url 'application:report_transactions' %}" class="btn-sm ghost">پاک کردن</a>{% endif %}
+  </div>
+  {% if date_error %}
+    <p style="flex: 1 1 100%; color: var(--danger); font-size: .82rem;">
+      تاریخ نامعتبر است و نادیده گرفته شد. فرمت درست: سال/ماه/روز مثل 1405/08/16
+    </p>
+  {% endif %}
+</form>
+
+<section class="stats">
+  <div class="card stat">
+    <span>تعداد تراکنش</span>
+    <b>{{ summary.count }}</b>
+    <small>مطابق فیلتر فعلی</small>
+  </div>
+  <div class="card stat in">
+    <span>مجموع ورود</span>
+    <b>{{ summary.in }}</b>
+    <small>عدد کالا</small>
+  </div>
+  <div class="card stat out">
+    <span>مجموع خروج</span>
+    <b>{{ summary.out }}</b>
+    <small>عدد کالا</small>
+  </div>
+  <div class="card stat {% if summary.net > 0 %}good{% elif summary.net < 0 %}bad{% endif %}">
+    <span>خالص تغییر موجودی</span>
+    <b dir="ltr" style="text-align: right;">{% if summary.net > 0 %}+{% endif %}{{ summary.net }}</b>
+    <small>ورود منهای خروج</small>
+  </div>
+</section>
+
+<section class="card panel">
+  <div class="panel-head">
+    <h2>لیست تراکنش‌ها <small>({{ total_count }} مورد)</small></h2>
+    <a href="?{{ querystring }}{% if querystring %}&{% endif %}export=csv" class="btn-sm export">
+      <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+      خروجی Excel (CSV)
+    </a>
+  </div>
+
+  <div class="table-scroll">
+    <table class="report">
+      <thead>
+        <tr>
+          <th>تاریخ</th><th>نوع</th><th>کالا</th><th>رنگ / سایز</th>
+          <th class="num">تعداد</th><th>انبار</th><th>ثبت‌کننده</th><th>توضیحات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in page_obj %}
+          <tr>
+            <td>{{ t.created_at|jdatetime }}</td>
+            <td>
+              {% if t.type == 'in' %}<span class="badge b-in">ورود</span>{% else %}<span class="badge b-out">خروج</span>{% endif %}
+            </td>
+            <td><a href="{% url 'application:product_detail' t.variant.product_id %}">{{ t.variant.product.name }}</a></td>
+            <td>
+              <span class="swatch" style="background: {{ t.variant.color.hex_code }}"></span>{{ t.variant.color.name }} / {{ t.variant.size.name }}
+            </td>
+            <td class="num">{{ t.quantity }}</td>
+            <td>{{ t.warehouse }}</td>
+            <td>{{ t.created_by.username|default:"—" }}</td>
+            <td class="note">{{ t.note|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="8" class="empty">
+            {% if has_filters %}تراکنشی با این فیلترها پیدا نشد.{% else %}هنوز تراکنشی ثبت نشده است.{% endif %}
+          </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% include "includes/pager.html" %}
+</section>
+{% endblock %}

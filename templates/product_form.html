@@ -1,0 +1,397 @@
+{% extends "home-base.html" %}
+
+{% block title %}افزودن کالا | سامانه انبارداری{% endblock %}
+{% block page_title %}افزودن کالای جدید{% endblock %}
+{% block page_subtitle %}مشخصات محصول را وارد کنید و رنگ‌ها و سایزهای آن را انتخاب کنید{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-card { padding: 26px; margin-bottom: 18px; animation: rise .5s ease both; min-width: 0; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  .form-card h2 { font-size: 1.02rem; margin-bottom: 4px; }
+  .form-card .lead { color: var(--muted); font-size: .84rem; margin-bottom: 20px; line-height: 1.8; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  .form-grid > * { min-width: 0; }
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .field.wide { grid-column: 1 / -1; }
+  .field label { font-size: .85rem; color: var(--muted); }
+  .req { color: var(--danger); }
+  .help { color: #6a7389; font-size: .76rem; }
+  .err { color: var(--danger); font-size: .8rem; }
+
+  .field input:not([type=checkbox]):not([type=file]),
+  .field select, .field textarea {
+    width: 100%; background: var(--input); border: 1px solid var(--border);
+    border-radius: 14px; color: var(--text); font: inherit; padding: 12px 14px; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .field input::placeholder, .field textarea::placeholder { color: #565e72; }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--primary); box-shadow: 0 0 0 4px rgba(108, 140, 255, .16);
+  }
+  .field input[dir=ltr] { text-align: left; }
+  .field select option { background: var(--panel-solid); }
+  .field input[type=file] {
+    background: var(--input); border: 1px dashed rgba(255, 255, 255, .18); border-radius: 14px;
+    padding: 12px; color: var(--muted); font: inherit; font-size: .85rem; cursor: pointer;
+    max-width: 100%;
+  }
+  .field input[type=file]::file-selector-button {
+    margin-left: 12px; padding: 7px 14px; border: 0; border-radius: 9px; cursor: pointer;
+    background: rgba(108, 140, 255, .18); color: var(--primary); font: inherit; font-size: .82rem;
+  }
+
+  .switch { display: flex; align-items: center; gap: 10px; color: var(--text); font-size: .9rem; cursor: pointer; padding-top: 6px; }
+  .switch input { accent-color: var(--primary); width: 17px; height: 17px; }
+
+  /* چیپ‌های رنگ و سایز (فقط CSS، بدون جاوااسکریپت) */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; list-style: none; }
+  .chip input { position: absolute; opacity: 0; pointer-events: none; }
+  .chip label {
+    display: inline-flex; align-items: center; gap: 9px; padding: 9px 15px; border-radius: 12px;
+    background: var(--input); border: 1px solid var(--border); color: var(--muted);
+    font-size: .88rem; cursor: pointer; user-select: none;
+    transition: border-color .2s, background .2s, color .2s, box-shadow .2s;
+  }
+  .chip label:hover { color: var(--text); border-color: rgba(255, 255, 255, .2); }
+  .chip input:checked + label {
+    color: #fff; border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(108, 140, 255, .26), rgba(139, 92, 246, .2));
+    box-shadow: 0 0 0 3px rgba(108, 140, 255, .14);
+  }
+  .chip input:focus-visible + label { box-shadow: 0 0 0 4px rgba(108, 140, 255, .3); }
+  .swatch { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); flex-shrink: 0; }
+  .size-chip label { min-width: 52px; justify-content: center; font-weight: 600; }
+
+  .empty-hint {
+    padding: 14px 16px; border-radius: 12px; font-size: .86rem; color: var(--warning);
+    background: rgba(245, 184, 75, .08); border: 1px solid rgba(245, 184, 75, .3);
+    line-height: 1.8;
+  }
+  .empty-hint a { color: var(--primary); text-decoration: underline; }
+
+  /* جدول موجودی رنگ × سایز */
+  .matrix [hidden] { display: none !important; }
+  .matrix-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .matrix-tools .fill { display: flex; align-items: center; gap: 8px; font-size: .84rem; color: var(--muted); }
+  .matrix-tools input {
+    width: 84px; background: var(--input); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); font: inherit; padding: 8px 10px; outline: none; text-align: center;
+  }
+  .matrix-tools input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108, 140, 255, .16); }
+  .btn-mini {
+    border: 0; cursor: pointer; font: inherit; font-size: .82rem; color: #fff;
+    padding: 8px 16px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  }
+  .btn-mini.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-mini.ghost:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
+  .matrix-tools .total { margin-right: auto; font-size: .84rem; color: var(--success); }
+
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 14px; }
+  .matrix-table { border-collapse: collapse; width: 100%; min-width: 360px; }
+  .matrix-table th, .matrix-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: center; }
+  .matrix-table tbody tr:last-child th, .matrix-table tbody tr:last-child td { border-bottom: 0; }
+  .matrix-table thead th { color: var(--muted); font-size: .8rem; font-weight: 600; background: rgba(255, 255, 255, .03); }
+  .matrix-table .corner { text-align: right; font-weight: 500; }
+  .matrix-table .row-head {
+    text-align: right; white-space: nowrap; font-size: .88rem; font-weight: 500;
+    background: rgba(255, 255, 255, .02); position: sticky; right: 0;
+  }
+  .row-head .swatch { display: inline-block; vertical-align: middle; margin-left: 9px; }
+  .matrix-table input.qty {
+    width: 72px; text-align: center; padding: 9px 6px; background: var(--input);
+    border: 1px solid var(--border); border-radius: 10px; color: var(--text); font: inherit; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .matrix-table input.qty:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108, 140, 255, .16); }
+  .matrix-table input.qty::placeholder { color: #444c5f; }
+  .matrix-table td.bad input.qty { border-color: var(--danger); }
+  .matrix-table input[type=number] { -moz-appearance: textfield; }
+  .matrix-table input::-webkit-outer-spin-button, .matrix-table input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .alert {
+    background: rgba(255, 107, 122, .1); border: 1px solid rgba(255, 107, 122, .35); color: var(--danger);
+    padding: 11px 14px; border-radius: 10px; font-size: .88rem; margin-bottom: 18px;
+    overflow-wrap: anywhere;
+  }
+
+  .actions-bar { display: flex; gap: 12px; justify-content: flex-start; flex-wrap: wrap; }
+  .btn {
+    border: 0; cursor: pointer; font: inherit; font-weight: 600; font-size: .95rem; color: #fff;
+    padding: 13px 30px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    box-shadow: 0 10px 28px rgba(108, 140, 255, .3);
+    transition: transform .15s, box-shadow .2s;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 14px 34px rgba(108, 140, 255, .42); }
+  .btn-ghost {
+    display: inline-flex; align-items: center; padding: 13px 24px; border-radius: 14px; font-size: .95rem;
+    color: var(--muted); background: transparent; border: 1px solid var(--border);
+    transition: color .2s, border-color .2s;
+  }
+  .btn-ghost:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 700px) {
+    .form-grid { grid-template-columns: 1fr; gap: 16px; }
+    .form-card { padding: 20px 16px; margin-bottom: 14px; }
+    .form-card .lead { margin-bottom: 16px; }
+
+    .field input:not([type=checkbox]):not([type=file]),
+    .field select { min-height: 46px; }
+
+    /* larger touch targets for color / size chips */
+    .chips { gap: 8px; }
+    .chip label { min-height: 44px; padding: 9px 14px; }
+    .size-chip label { min-width: 56px; }
+
+    /* quick-fill tools stack nicely */
+    .matrix-tools .fill { flex: 1 1 100%; }
+    .matrix-tools .fill input { flex: 1; width: auto; min-width: 0; min-height: 42px; }
+    .btn-mini { flex: 1; min-height: 42px; }
+    .matrix-tools .total { flex: 1 1 100%; margin-right: 0; }
+
+    /* matrix: opaque sticky first column + tighter cells */
+    .matrix-table th, .matrix-table td { padding: 7px 8px; }
+    .matrix-table .row-head { background: #151a26; z-index: 1; font-size: .84rem; box-shadow: -1px 0 0 var(--border) inset; }
+    .matrix-table .corner { position: sticky; right: 0; z-index: 2; background: #1a2030; }
+    .matrix-table input.qty { width: 64px; min-height: 42px; }
+
+    /* action buttons fill the width */
+    .actions-bar { gap: 10px; }
+    .actions-bar .btn, .actions-bar .btn-ghost { flex: 1 1 140px; justify-content: center; text-align: center; min-height: 48px; padding: 12px 18px; }
+    .actions-bar .btn { flex-grow: 2; }
+  }
+  @media (max-width: 420px) {
+    .form-card { padding: 18px 14px; }
+    .actions-bar .btn, .actions-bar .btn-ghost { flex-basis: 100%; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{# فرم یک POST معمولی است؛ هیچ جاوااسکریپتی در ارسال آن دخالت ندارد. enctype برای آپلود تصویر لازم است. #}
+<form method="post" enctype="multipart/form-data" novalidate>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="alert" role="alert">{{ form.non_field_errors }}</div>
+  {% elif form.errors %}
+    <div class="alert" role="alert">لطفاً خطاهای مشخص‌شده را برطرف کنید.</div>
+  {% endif %}
+
+  <section class="card form-card">
+    <h2>اطلاعات اصلی</h2>
+    <p class="lead">مشخصات کلی مدل (مثلاً «پیراهن کتان مردانه»)</p>
+    <div class="form-grid">
+      {% include "includes/field.html" with field=form.name %}
+      {% include "includes/field.html" with field=form.sku %}
+      {% include "includes/field.html" with field=form.brand %}
+      {% include "includes/field.html" with field=form.category %}
+      {% include "includes/field.html" with field=form.gender %}
+      {% include "includes/field.html" with field=form.season %}
+      {% include "includes/field.html" with field=form.material %}
+      {% include "includes/field.html" with field=form.price %}
+      {% include "includes/field.html" with field=form.image extra_class="wide" %}
+      {% include "includes/field.html" with field=form.description extra_class="wide" %}
+      <label class="switch wide">
+        {{ form.is_active }} محصول فعال باشد
+      </label>
+    </div>
+  </section>
+
+  <section class="card form-card">
+    <h2>رنگ‌ها</h2>
+    <p class="lead">رنگ‌هایی که این مدل در آن‌ها موجود است را انتخاب کنید.</p>
+    {% if form.colors.field.queryset %}
+      <ul class="chips">
+        {% for opt in form.colors %}
+          <li class="chip">
+            <input type="checkbox" name="{{ opt.data.name }}" value="{{ opt.data.value }}"
+                   id="{{ opt.id_for_label }}" {% if opt.data.selected %}checked{% endif %}>
+            <label for="{{ opt.id_for_label }}">
+              <span class="swatch" style="background: {{ opt.data.value.instance.hex_code }}"></span>
+              {{ opt.choice_label }}
+            </label>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty-hint">
+        هنوز رنگی تعریف نشده است. ابتدا از <a href="{% url 'admin:index' %}">پنل مدیریت</a> چند رنگ اضافه کنید.
+      </div>
+    {% endif %}
+    {% for error in form.colors.errors %}<small class="err">{{ error }}</small>{% endfor %}
+  </section>
+
+  <section class="card form-card">
+    <h2>سایزها</h2>
+    <p class="lead">سایزهای موجود را انتخاب کنید. برای هر ترکیب رنگ × سایز یک ردیف موجودی جداگانه ساخته می‌شود.</p>
+    {% if form.sizes.field.queryset %}
+      <ul class="chips">
+        {% for opt in form.sizes %}
+          <li class="chip size-chip">
+            <input type="checkbox" name="{{ opt.data.name }}" value="{{ opt.data.value }}"
+                   id="{{ opt.id_for_label }}" {% if opt.data.selected %}checked{% endif %}>
+            <label for="{{ opt.id_for_label }}">{{ opt.choice_label }}</label>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty-hint">
+        هنوز سایزی تعریف نشده است. ابتدا از <a href="{% url 'admin:index' %}">پنل مدیریت</a> چند سایز اضافه کنید.
+      </div>
+    {% endif %}
+    {% for error in form.sizes.errors %}<small class="err">{{ error }}</small>{% endfor %}
+  </section>
+
+  <section class="card form-card">
+    <h2>موجودی هر رنگ و سایز</h2>
+    <p class="lead">
+      تعداد هر ترکیب را جداگانه وارد کنید. فقط رنگ‌ها و سایزهای انتخاب‌شده در جدول دیده می‌شوند.
+      خانه‌ی خالی یعنی موجودی صفر.
+    </p>
+
+    {% if form.matrix_errors %}
+      <div class="alert" role="alert">
+        {% for e in form.matrix_errors %}<div>{{ e }}</div>{% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="matrix" id="matrixWrap">
+      <div class="matrix-tools">
+        <label class="fill">
+          <span>مقدار یکسان برای همه:</span>
+          {# بدون name: ارسال نمی‌شود و فقط ابزار کمکی است #}
+          <input type="number" id="fillValue" min="0" placeholder="0">
+        </label>
+        <button type="button" class="btn-mini" id="fillBtn">اعمال</button>
+        <button type="button" class="btn-mini ghost" id="clearBtn">پاک کردن همه</button>
+        <span class="total" id="matrixTotal"></span>
+      </div>
+
+      <p class="empty-hint" id="matrixEmpty" hidden>ابتدا رنگ و سایز را از بخش‌های بالا انتخاب کنید.</p>
+
+      <div class="table-scroll">
+        <table class="matrix-table" id="matrixTable">
+          <thead>
+            <tr>
+              <th class="corner">رنگ \ سایز</th>
+              {% for size in form.matrix_sizes %}
+                <th data-size="{{ size.pk }}">{{ size.name }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for color, cells in form.matrix_rows %}
+              <tr data-color="{{ color.pk }}">
+                <th class="row-head">
+                  <span class="swatch" style="background: {{ color.hex_code }}"></span>{{ color.name }}
+                </th>
+                {% for size, bf in cells %}
+                  <td data-color="{{ color.pk }}" data-size="{{ size.pk }}" class="{% if bf.errors %}bad{% endif %}">
+                    {{ bf }}
+                  </td>
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="form-grid" style="margin-top: 22px;">
+      {% include "includes/field.html" with field=form.warehouse %}
+      {% include "includes/field.html" with field=form.min_stock %}
+    </div>
+  </section>
+
+  <div class="actions-bar">
+    <button type="submit" class="btn">ثبت محصول</button>
+    <a href="{% url 'application:home' %}" class="btn-ghost">انصراف</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  /*
+    این اسکریپت فقط خانه‌های جدول موجودی را نشان/پنهان می‌کند و جمع را محاسبه می‌کند.
+    هیچ شنونده‌ی submit ندارد و preventDefault نمی‌زند؛ فرم همیشه به‌صورت عادی ارسال می‌شود.
+    (خانه‌های پنهان disabled می‌شوند تا مقدارشان ارسال نشود. بدون جاوااسکریپت، همه‌ی خانه‌ها
+    دیده می‌شوند و سرور فقط ترکیب‌های انتخاب‌شده را می‌خواند.)
+  */
+  (function () {
+    var wrap = document.getElementById('matrixWrap');
+    if (!wrap) return;
+
+    var colorBoxes = document.querySelectorAll('input[name="colors"]');
+    var sizeBoxes = document.querySelectorAll('input[name="sizes"]');
+    var rows = wrap.querySelectorAll('tbody tr[data-color]');
+    var heads = wrap.querySelectorAll('thead th[data-size]');
+    var cells = wrap.querySelectorAll('td[data-color][data-size]');
+    var table = document.getElementById('matrixTable');
+    var emptyMsg = document.getElementById('matrixEmpty');
+    var totalEl = document.getElementById('matrixTotal');
+
+    function checkedMap(boxes) {
+      var map = {};
+      for (var i = 0; i < boxes.length; i++) if (boxes[i].checked) map[boxes[i].value] = true;
+      return map;
+    }
+
+    function sync() {
+      var cs = checkedMap(colorBoxes), ss = checkedMap(sizeBoxes);
+      var active = 0, total = 0, i;
+
+      for (i = 0; i < rows.length; i++) rows[i].hidden = !cs[rows[i].getAttribute('data-color')];
+      for (i = 0; i < heads.length; i++) heads[i].hidden = !ss[heads[i].getAttribute('data-size')];
+
+      for (i = 0; i < cells.length; i++) {
+        var td = cells[i];
+        var on = !!(cs[td.getAttribute('data-color')] && ss[td.getAttribute('data-size')]);
+        var input = td.querySelector('input');
+        td.hidden = !on;
+        input.disabled = !on;
+        if (on) {
+          active++;
+          total += parseInt(input.value, 10) || 0;
+        }
+      }
+
+      table.hidden = active === 0;
+      emptyMsg.hidden = active !== 0;
+      totalEl.textContent = active ? 'جمع: ' + total + ' عدد در ' + active + ' ترکیب' : '';
+    }
+
+    function eachActive(fn) {
+      for (var i = 0; i < cells.length; i++) {
+        var input = cells[i].querySelector('input');
+        if (!input.disabled) fn(input);
+      }
+      sync();
+    }
+
+    var all = Array.prototype.slice.call(colorBoxes).concat(Array.prototype.slice.call(sizeBoxes));
+    all.forEach(function (b) { b.addEventListener('change', sync); });
+    wrap.addEventListener('input', function (e) {
+      if (e.target.classList && e.target.classList.contains('qty')) sync();
+    });
+
+    document.getElementById('fillBtn').addEventListener('click', function () {
+      var v = document.getElementById('fillValue').value;
+      if (v === '') return;
+      eachActive(function (input) { input.value = v; });
+    });
+    document.getElementById('clearBtn').addEventListener('click', function () {
+      eachActive(function (input) { input.value = ''; });
+    });
+
+    sync();
+    // بازگشت با دکمه Back مرورگر: چک‌باکس‌ها ممکن است بازیابی شده باشند
+    window.addEventListener('pageshow', sync);
+  })();
+</script>
+{% endblock %}

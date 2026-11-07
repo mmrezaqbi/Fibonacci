@@ -1,0 +1,467 @@
+{% load jalali_tags %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>داشبورد | سامانه انبارداری</title>
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --panel: rgba(22, 27, 38, .72);
+      --panel-solid: #121722;
+      --border: rgba(255, 255, 255, .08);
+      --text: #e6e9f0;
+      --muted: #8b93a7;
+      --input: #10141d;
+      --primary: #6c8cff;
+      --primary-2: #8b5cf6;
+      --success: #3ddc97;
+      --warning: #f5b84b;
+      --danger: #ff6b7a;
+      --radius: 16px;
+      --sidebar: 250px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    body {
+      font-family: Vazirmatn, "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+    body.no-scroll { overflow: hidden; }
+    body::before, body::after {
+      content: ""; position: fixed; width: 520px; height: 520px; border-radius: 50%;
+      filter: blur(120px); opacity: .22; z-index: 0; pointer-events: none;
+    }
+    body::before { background: var(--primary); top: -180px; right: -140px; }
+    body::after  { background: var(--primary-2); bottom: -200px; left: -160px; }
+    a { color: inherit; text-decoration: none; }
+    svg { stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    img, video, canvas { max-width: 100%; height: auto; }
+
+    /* ---------- Sidebar ---------- */
+    .sidebar {
+      position: fixed; top: 0; right: 0; bottom: 0; width: var(--sidebar);
+      background: var(--panel-solid);
+      border-left: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex; flex-direction: column;
+      z-index: 30;
+      transition: transform .3s ease;
+      overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 24px; }
+    .brand .logo {
+      width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 8px 22px rgba(108, 140, 255, .35); color: #fff; flex-shrink: 0;
+    }
+    .brand .logo svg { width: 22px; height: 22px; }
+    .brand b { font-size: 1rem; display: block; }
+    .brand small { color: var(--muted); font-size: .75rem; }
+
+    .nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .nav-title { color: #565e72; font-size: .72rem; padding: 14px 12px 6px; }
+    .nav a {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 12px; border-radius: 12px;
+      color: var(--muted); font-size: .92rem;
+      transition: background .2s, color .2s;
+    }
+    .nav a svg { width: 19px; height: 19px; flex-shrink: 0; }
+    .nav a:hover { background: rgba(255, 255, 255, .05); color: var(--text); }
+    .nav a.active {
+      color: #fff;
+      background: linear-gradient(135deg, rgba(108, 140, 255, .28), rgba(139, 92, 246, .22));
+      box-shadow: inset 0 0 0 1px rgba(108, 140, 255, .35);
+    }
+
+    .logout-btn {
+      width: 100%; display: flex; align-items: center; gap: 12px;
+      background: none; border: 1px solid var(--border); border-radius: 12px;
+      color: var(--muted); font: inherit; font-size: .9rem;
+      padding: 11px 12px; cursor: pointer; transition: all .2s;
+    }
+    .logout-btn svg { width: 19px; height: 19px; }
+    .logout-btn:hover { color: var(--danger); border-color: rgba(255, 107, 122, .4); background: rgba(255, 107, 122, .07); }
+
+    /* ---------- Main ---------- */
+    .main { position: relative; z-index: 1; margin-right: var(--sidebar); padding: 24px 28px 40px; min-width: 0; }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 26px; }
+    .topbar-right { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .menu-btn {
+      display: none; width: 42px; height: 42px; border-radius: 12px;
+      background: var(--panel); border: 1px solid var(--border); color: var(--text);
+      cursor: pointer; place-items: center; flex-shrink: 0;
+    }
+    .menu-btn svg { width: 20px; height: 20px; }
+    .greet { min-width: 0; }
+    .greet h1 { font-size: 1.35rem; overflow-wrap: anywhere; }
+    .greet p { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+
+    .search {
+      position: relative; flex: 0 1 320px; min-width: 0;
+    }
+    .search input {
+      width: 100%; background: var(--input); border: 1px solid var(--border);
+      border-radius: 14px; color: var(--text); font: inherit; font-size: .9rem;
+      padding: 11px 42px 11px 14px; outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .search input::placeholder { color: #565e72; }
+    .search input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(108, 140, 255, .16); }
+    .search svg { position: absolute; top: 50%; right: 14px; transform: translateY(-50%); width: 18px; height: 18px; color: var(--muted); }
+
+    .user-chip {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--panel); border: 1px solid var(--border);
+      padding: 6px 14px 6px 8px; border-radius: 999px; font-size: .88rem;
+      flex-shrink: 0;
+    }
+    .user-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; font-weight: 700; font-size: .85rem;
+    }
+
+    /* ---------- Cards ---------- */
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, .35);
+    }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+    .stat { padding: 20px; animation: rise .5s ease both; transition: transform .2s, border-color .2s; min-width: 0; }
+    .stat:hover { transform: translateY(-3px); border-color: rgba(108, 140, 255, .35); }
+    .stat:nth-child(2) { animation-delay: .05s; } .stat:nth-child(3) { animation-delay: .1s; } .stat:nth-child(4) { animation-delay: .15s; }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    .stat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 8px; }
+    .stat-top span { color: var(--muted); font-size: .85rem; }
+    .stat-icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
+    .stat-icon svg { width: 20px; height: 20px; }
+    .i-blue   { background: rgba(108, 140, 255, .15); color: var(--primary); }
+    .i-green  { background: rgba(61, 220, 151, .13); color: var(--success); }
+    .i-yellow { background: rgba(245, 184, 75, .13); color: var(--warning); }
+    .i-purple { background: rgba(139, 92, 246, .15); color: var(--primary-2); }
+    .stat-value { font-size: 1.8rem; font-weight: 700; overflow-wrap: anywhere; }
+    .stat-note { color: var(--muted); font-size: .78rem; margin-top: 4px; }
+
+    .grid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; }
+    .grid > * { min-width: 0; }
+    .section { padding: 22px; }
+    .section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; }
+    .section-head h2 { font-size: 1.02rem; }
+    .section-head a { color: var(--primary); font-size: .82rem; white-space: nowrap; }
+    .section-head a:hover { text-decoration: underline; }
+
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; min-width: 460px; }
+    th { text-align: right; color: var(--muted); font-weight: 500; font-size: .78rem; padding: 0 10px 12px; white-space: nowrap; }
+    td { padding: 13px 10px; border-top: 1px solid var(--border); white-space: nowrap; }
+    tr:hover td { background: rgba(255, 255, 255, .02); }
+    .badge { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: .75rem; }
+    .b-in  { background: rgba(61, 220, 151, .13); color: var(--success); }
+    .b-out { background: rgba(255, 107, 122, .12); color: var(--danger); }
+    .empty { text-align: center; color: var(--muted); padding: 30px 0 10px; font-size: .88rem; }
+
+    .low-list { display: flex; flex-direction: column; gap: 14px; }
+    .low-item .row { display: flex; justify-content: space-between; gap: 10px; font-size: .88rem; margin-bottom: 7px; }
+    .low-item .row span { min-width: 0; overflow-wrap: anywhere; }
+    .low-item .row small { color: var(--muted); white-space: nowrap; }
+    .bar { height: 7px; border-radius: 99px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+    .bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--danger), var(--warning)); }
+
+    .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+    .action {
+      display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
+      padding: 20px 10px; font-size: .88rem; border-radius: var(--radius);
+      background: var(--panel); border: 1px solid var(--border);
+      transition: transform .2s, border-color .2s, background .2s;
+    }
+    .action:hover { transform: translateY(-3px); border-color: rgba(108, 140, 255, .4); background: rgba(108, 140, 255, .07); }
+    .action .stat-icon { width: 44px; height: 44px; }
+
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, .55); z-index: 20; }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 1280px) and (min-width: 1025px) {
+      :root { --sidebar: 224px; }
+      .main { padding: 22px 22px 36px; }
+    }
+    @media (max-width: 1100px) { .stats { grid-template-columns: repeat(2, 1fr); } .grid { grid-template-columns: 1fr; } }
+
+    /* Tablets and phones: sidebar becomes an off-canvas drawer */
+    @media (max-width: 1024px) {
+      .sidebar {
+        transform: translateX(100%);
+        width: min(300px, 86vw);
+        height: 100vh; height: 100dvh; bottom: auto;
+        padding-top: calc(24px + env(safe-area-inset-top));
+        padding-bottom: calc(24px + env(safe-area-inset-bottom));
+        padding-right: calc(16px + env(safe-area-inset-right));
+        box-shadow: -20px 0 50px rgba(0, 0, 0, .45);
+      }
+      .sidebar.open { transform: none; }
+      .overlay.show { display: block; }
+      .main {
+        margin-right: 0;
+        padding: 20px calc(22px + env(safe-area-inset-left)) calc(32px + env(safe-area-inset-bottom)) calc(22px + env(safe-area-inset-right));
+      }
+      .menu-btn { display: grid; }
+      .nav a, .logout-btn { min-height: 46px; }
+      body::before, body::after { width: 380px; height: 380px; filter: blur(90px); }
+    }
+
+    /* Small tablets / large phones: search moves to its own full-width row */
+    @media (max-width: 760px) {
+      .topbar { flex-wrap: wrap; }
+      .topbar-right { flex: 1 1 0; }
+      .search { order: 3; flex: 1 1 100%; }
+    }
+
+    /* Phones */
+    @media (max-width: 600px) {
+      .main { padding: 16px calc(14px + env(safe-area-inset-left)) calc(28px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-right)); }
+      .topbar { margin-bottom: 20px; gap: 10px; }
+      .topbar-right { gap: 10px; }
+      .greet h1 { font-size: 1.1rem; line-height: 1.5; }
+      .greet p { font-size: .78rem; }
+      .card { border-radius: 14px; box-shadow: 0 12px 30px rgba(0, 0, 0, .3); }
+      .stats { gap: 12px; }
+      .stat { padding: 16px; }
+      .stat-top { margin-bottom: 10px; }
+      .stat-top span { font-size: .8rem; }
+      .stat-icon { width: 36px; height: 36px; }
+      .stat-value { font-size: 1.5rem; }
+      .grid { gap: 12px; }
+      .section { padding: 16px; }
+      .section-head { margin-bottom: 12px; }
+      .actions { gap: 10px; }
+      .action { padding: 16px 8px; font-size: .82rem; }
+      /* prevents iOS from zooming in when focusing the search field */
+      .search input { font-size: 16px; }
+    }
+    @media (max-width: 520px) {
+      .actions { grid-template-columns: 1fr; }
+      .action { flex-direction: row; justify-content: flex-start; text-align: right; padding: 14px 16px; gap: 14px; }
+      .action .stat-icon { width: 40px; height: 40px; }
+      .user-chip span { display: none; }
+      .user-chip { padding: 6px; }
+    }
+    @media (max-width: 400px) {
+      .stats { grid-template-columns: 1fr; }
+      .menu-btn { width: 40px; height: 40px; }
+      .greet h1 { font-size: 1rem; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3.3 7.5L12 12.5l8.7-5"/><path d="M12 22V12.5"/></svg>
+      </div>
+      <div><b>سامانه انبارداری</b><small>مدیریت موجودی</small></div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-title">منوی اصلی</div>
+      {# لینک‌ها را با {% url 'نام_url' %} جایگزین کنید #}
+      <a href="#" class="active">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        داشبورد
+      </a>
+      <a href="{% url 'application:product_list' %}">
+        <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3.3 7.5L12 12.5l8.7-5"/></svg>
+        کالاها
+      </a>
+      <a href="{% url 'application:stock_in' %}">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+        ورود به انبار
+      </a>
+      <a href="{% url 'application:stock_out' %}">
+        <svg viewBox="0 0 24 24"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 4h16"/></svg>
+        خروج از انبار
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
+        انبارها
+      </a>
+      <div class="nav-title">گزارش و تنظیمات</div>
+      <a href="{% url 'application:reports' %}">
+        <svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
+        گزارش‌ها
+      </a>
+      <a href="#">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+        تنظیمات
+      </a>
+    </nav>
+
+    {# خروج با POST (از جنگو ۵ به بعد GET برای logout مجاز نیست) #}
+    <form method="post" action="{% url 'application:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="logout-btn">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        خروج از حساب
+      </button>
+    </form>
+  </aside>
+  <div class="overlay" id="overlay"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-right">
+        <button type="button" class="menu-btn" id="menuBtn" aria-label="منو">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <div class="greet">
+          <h1>سلام، {{ user.get_full_name|default:user.username }} 👋</h1>
+          <p>امروز {% jtoday %} — خلاصه وضعیت انبار</p>
+        </div>
+      </div>
+
+      <div class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="search" placeholder="جستجوی کالا، کد یا انبار..." aria-label="جستجو">
+      </div>
+
+      <div class="user-chip">
+        <div class="avatar">{{ user.username|slice:":1"|upper }}</div>
+        <span>{{ user.username }}</span>
+      </div>
+    </header>
+
+    <!-- آمار -->
+    <section class="stats">
+      <div class="card stat">
+        <div class="stat-top"><span>تعداد کالاها</span>
+          <div class="stat-icon i-blue"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3.3 7.5L12 12.5l8.7-5"/></svg></div>
+        </div>
+        <div class="stat-value">{{ stats.total_products|default:0 }}</div>
+        <div class="stat-note">کالای ثبت‌شده</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-top"><span>موجودی کل</span>
+          <div class="stat-icon i-green"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg></div>
+        </div>
+        <div class="stat-value">{{ stats.total_stock|default:0 }}</div>
+        <div class="stat-note">مجموع واحدهای موجود</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-top"><span>کالاهای کم‌موجود</span>
+          <div class="stat-icon i-yellow"><svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg></div>
+        </div>
+        <div class="stat-value">{{ stats.low_stock_count|default:0 }}</div>
+        <div class="stat-note">نیازمند سفارش مجدد</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-top"><span>تراکنش‌های امروز</span>
+          <div class="stat-icon i-purple"><svg viewBox="0 0 24 24"><path d="M7 7h13l-3-3"/><path d="M17 17H4l3 3"/></svg></div>
+        </div>
+        <div class="stat-value">{{ stats.today_transactions|default:0 }}</div>
+        <div class="stat-note">ورود و خروج</div>
+      </div>
+    </section>
+
+    <!-- جدول و کم‌موجودی -->
+    <section class="grid">
+      <div class="card section">
+        <div class="section-head">
+          <h2>آخرین تراکنش‌ها</h2>
+          <a href="#">مشاهده همه</a>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>کالا</th><th>نوع</th><th>تعداد</th><th>انبار</th><th>تاریخ</th></tr>
+            </thead>
+            <tbody>
+              {% for t in recent_transactions %}
+              <tr>
+                <td>{{ t.variant }}</td>
+                <td>
+                  {% if t.type == 'in' %}<span class="badge b-in">ورود</span>
+                  {% else %}<span class="badge b-out">خروج</span>{% endif %}
+                </td>
+                <td>{{ t.quantity }}</td>
+                <td>{{ t.warehouse }}</td>
+                <td>{{ t.created_at|jdatetime }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="empty">هنوز تراکنشی ثبت نشده است.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card section">
+        <div class="section-head">
+          <h2>هشدار موجودی</h2>
+          <a href="#">همه کالاها</a>
+        </div>
+        <div class="low-list">
+          {% for item in low_stock_items %}
+          <div class="low-item">
+            <div class="row">
+              <span>{{ item.name }}</span>
+              <small>{{ item.stock }} از {{ item.min_stock }}</small>
+            </div>
+            <div class="bar"><i style="width: {{ item.percent|default:20 }}%"></i></div>
+          </div>
+          {% empty %}
+          <div class="empty">همه کالاها موجودی کافی دارند ✔</div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <!-- دسترسی سریع -->
+    <section class="actions">
+      <a href="{% url 'application:stock_in' %}" class="action">
+        <div class="stat-icon i-green"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+        ثبت ورود کالا
+      </a>
+      <a href="{% url 'application:stock_out' %}" class="action">
+        <div class="stat-icon i-yellow"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></div>
+        ثبت خروج کالا
+      </a>
+      <a href="{% url 'application:product_create' %}" class="action">
+        <div class="stat-icon i-blue"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M12 22V12.5"/></svg></div>
+        افزودن کالای جدید
+      </a>
+    </section>
+  </main>
+
+  <script>
+    // فقط منوی موبایل/تبلت؛ هیچ دخالتی در فرم‌ها (مثل خروج) ندارد.
+    (function () {
+      var sidebar = document.getElementById('sidebar');
+      var overlay = document.getElementById('overlay');
+      var btn = document.getElementById('menuBtn');
+      function toggle(open) {
+        sidebar.classList.toggle('open', open);
+        overlay.classList.toggle('show', open);
+        document.body.classList.toggle('no-scroll', open);
+      }
+      btn.addEventListener('click', function () { toggle(!sidebar.classList.contains('open')); });
+      overlay.addEventListener('click', function () { toggle(false); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') toggle(false); });
+      sidebar.querySelectorAll('.nav a').forEach(function (a) {
+        a.addEventListener('click', function () { toggle(false); });
+      });
+      window.addEventListener('resize', function () {
+        if (window.innerWidth > 1024) toggle(false);
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ورود | سامانه انبارداری</title>
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+</head>
+<body>
+
+  <main class="card">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3.3 7.5L12 12.5l8.7-5"/><path d="M12 22V12.5"/>
+      </svg>
+    </div>
+    <h1>خوش آمدید</h1>
+    <p class="sub">برای ورود به سامانه انبارداری، وارد حساب خود شوید</p>
+
+    {% if form.errors %}
+      <div class="alert" role="alert">
+        {% if form.non_field_errors %}
+          {{ form.non_field_errors.0 }}
+        {% else %}
+          نام کاربری یا گذرواژه نادرست است.
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {# action خالی = ارسال به همین آدرس (LoginView). فرم به‌صورت POST معمولی ارسال می‌شود. #}
+    <form method="post" id="loginForm" autocomplete="on">
+      {% csrf_token %}
+
+      <div class="field">
+        <label for="id_username">نام کاربری</label>
+        <div class="control">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <input type="text" id="id_username" name="username"
+                 value="{{ form.username.value|default:'' }}"
+                 placeholder="نام کاربری" autocomplete="username"
+                 autocapitalize="none" spellcheck="false" required autofocus>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="id_password">گذرواژه</label>
+        <div class="control">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+          <input type="password" id="id_password" name="password"
+                 placeholder="••••••••" autocomplete="current-password" required>
+          <button type="button" class="toggle" id="togglePw" aria-label="نمایش گذرواژه">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="caps" id="capsWarn">⚠ Caps Lock روشن است</div>
+      </div>
+
+      <div class="row">
+        <label class="check"><input type="checkbox" name="remember_me" value="1"> مرا به خاطر بسپار</label>
+        {# <a href="{% url 'password_reset' %}">فراموشی گذرواژه؟</a> #}
+      </div>
+
+      <input type="hidden" name="next" value="">
+
+      <button type="submit" class="btn" id="submitBtn">
+        <span class="spin"></span>
+        <span class="label">ورود</span>
+      </button>
+    </form>
+
+    <p class="foot">© {% now "Y" %} سامانه انبارداری</p>
+  </main>
+
+  <script src="{% static 'js/base.js' %}"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{# نیازمند: page_obj, page_range, ellipsis, querystring #}
+{% if page_obj.paginator.num_pages > 1 %}
+  <nav class="pager" aria-label="صفحه‌بندی">
+    {% if page_obj.has_next %}
+      <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">بعدی</a>
+    {% endif %}
+    {% for n in page_range %}
+      {% if n == ellipsis %}
+        <span class="gap">…</span>
+      {% elif n == page_obj.number %}
+        <span class="current" aria-current="page">{{ n }}</span>
+      {% else %}
+        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ n }}">{{ n }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if page_obj.has_previous %}
+      <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">قبلی</a>
+    {% endif %}
+  </nav>
+{% endif %}

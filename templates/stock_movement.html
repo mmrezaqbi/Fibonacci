@@ -1,0 +1,299 @@
+{% extends "home-base.html" %}
+{% load jalali_tags %}
+
+{% block title %}{{ ui.title }} | سامانه انبارداری{% endblock %}
+{% block page_title %}{{ ui.title }}{% endblock %}
+{% block page_subtitle %}{{ ui.subtitle }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .swatch { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); flex-shrink: 0; }
+  .box { padding: 24px; margin-bottom: 16px; animation: rise .45s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  .box h2 { font-size: 1.02rem; margin-bottom: 4px; }
+  .box .lead { color: var(--muted); font-size: .84rem; margin-bottom: 18px; }
+
+  .pick { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .pick select { flex: 1 1 280px; }
+  select, .field input:not([type=checkbox]) {
+    width: 100%; background: var(--input); border: 1px solid var(--border); border-radius: 14px;
+    color: var(--text); font: inherit; padding: 12px 14px; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  select option { background: var(--panel-solid); }
+  select:focus, .field input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(108, 140, 255, .16); }
+  .field input::placeholder { color: #565e72; }
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .field label { font-size: .85rem; color: var(--muted); }
+  .req { color: var(--danger); }
+  .help { color: #6a7389; font-size: .76rem; }
+  .err { color: var(--danger); font-size: .78rem; }
+  .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 22px; }
+
+  .btn {
+    border: 0; cursor: pointer; font: inherit; font-weight: 600; font-size: .95rem; color: #fff;
+    padding: 12px 28px; border-radius: 14px; white-space: nowrap;
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    box-shadow: 0 10px 28px rgba(108, 140, 255, .3); transition: transform .15s, box-shadow .2s;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 14px 34px rgba(108, 140, 255, .42); }
+  .btn.out { background: linear-gradient(135deg, #ff8a5c, var(--danger)); box-shadow: 0 10px 28px rgba(255, 107, 122, .28); }
+  .btn.out:hover { box-shadow: 0 14px 34px rgba(255, 107, 122, .4); }
+  .btn.in { background: linear-gradient(135deg, #2fd68b, #1fb8a0); box-shadow: 0 10px 28px rgba(61, 220, 151, .25); }
+  .btn.in:hover { box-shadow: 0 14px 34px rgba(61, 220, 151, .38); }
+  .mode-in .tools .sum { color: var(--success); }
+  .btn-ghost {
+    display: inline-flex; align-items: center; padding: 12px 22px; border-radius: 14px; font-size: .95rem;
+    color: var(--muted); border: 1px solid var(--border); background: transparent; cursor: pointer; font-family: inherit;
+    transition: color .2s, border-color .2s;
+  }
+  .btn-ghost:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
+
+  .pinfo { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+  .pinfo .thumb {
+    width: 56px; height: 56px; border-radius: 12px; overflow: hidden; background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--border); display: grid; place-items: center; color: #3b4359; flex-shrink: 0;
+  }
+  .pinfo .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .pinfo .thumb svg { width: 26px; height: 26px; }
+  .pinfo h2 { margin: 0; }
+  .pinfo small { color: var(--muted); font-size: .78rem; }
+  .pinfo .total { margin-right: auto; text-align: left; }
+  .pinfo .total b { font-size: 1.5rem; display: block; }
+
+  .alert {
+    background: rgba(255, 107, 122, .1); border: 1px solid rgba(255, 107, 122, .35); color: var(--danger);
+    padding: 11px 14px; border-radius: 10px; font-size: .88rem; margin-bottom: 18px;
+  }
+
+  .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .tools .sum { margin-right: auto; font-size: .86rem; color: var(--warning); }
+  .btn-mini {
+    border: 1px solid var(--border); cursor: pointer; font: inherit; font-size: .82rem; color: var(--muted);
+    padding: 8px 16px; border-radius: 10px; background: transparent; transition: color .2s, border-color .2s;
+  }
+  .btn-mini:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
+  table { border-collapse: collapse; width: 100%; }
+  .matrix { min-width: 400px; }
+  .matrix th, .matrix td { padding: 10px 12px; text-align: center; border-bottom: 1px solid var(--border); }
+  .matrix tbody tr:last-child th, .matrix tbody tr:last-child td { border-bottom: 0; }
+  .matrix thead th { color: var(--muted); font-size: .8rem; font-weight: 600; background: rgba(255, 255, 255, .03); }
+  .matrix .corner { text-align: right; font-weight: 500; }
+  .matrix .row-head {
+    text-align: right; white-space: nowrap; font-size: .9rem; font-weight: 500;
+    background: rgba(255, 255, 255, .02); position: sticky; right: 0;
+  }
+  .row-head .swatch { vertical-align: middle; margin-left: 9px; }
+  .matrix .none { color: #3b4359; }
+  .mcell { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .mcell input.qty { width: 78px; text-align: center; padding: 9px 6px; border-radius: 10px; }
+  .mcell input.qty:disabled { opacity: .35; cursor: not-allowed; }
+  .mcell .avail { font-size: .74rem; color: var(--success); }
+  .mcell.low .avail { color: var(--warning); }
+  .mcell.zero .avail { color: var(--danger); }
+  .mcell.bad input.qty { border-color: var(--danger); }
+  .matrix input[type=number] { -moz-appearance: textfield; }
+  .matrix input::-webkit-outer-spin-button, .matrix input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .actions-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+  .note { margin-top: 12px; color: #6a7389; font-size: .78rem; }
+
+  .tx { font-size: .88rem; min-width: 520px; }
+  .tx th { text-align: right; color: var(--muted); font-weight: 500; font-size: .78rem; padding: 0 10px 12px; }
+  .tx td { padding: 12px 10px; border-top: 1px solid var(--border); white-space: nowrap; }
+  .tx td a { color: var(--primary); }
+  .tx td a:hover { text-decoration: underline; }
+  .empty { text-align: center; color: var(--muted); padding: 24px 0 6px; font-size: .88rem; }
+
+  @media (max-width: 700px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .box { padding: 18px 14px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# مرحله ۱: انتخاب محصول (فرم GET ساده، بدون جاوااسکریپت) #}
+<section class="card box">
+  <h2>۱. انتخاب محصول</h2>
+  <p class="lead">{{ ui.pick_lead }}</p>
+  <form method="get" class="pick">
+    <select name="product" aria-label="محصول" required>
+      <option value="">— انتخاب محصول —</option>
+      {% for p in products %}
+        <option value="{{ p.pk }}" {% if product and product.pk == p.pk %}selected{% endif %}>
+          {{ p.name }} ({{ p.sku }}) — موجودی: {{ p.stock_sum }}
+        </option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn">نمایش موجودی</button>
+  </form>
+</section>
+
+{# مرحله ۲: ثبت تعداد ورود یا خروج برای هر رنگ و سایز #}
+{% if form %}
+<section class="card box">
+  <h2>{{ ui.step2_title }}</h2>
+  <p class="lead">{{ ui.step2_lead }}</p>
+
+  <div class="pinfo">
+    <div class="thumb">
+      {% if product.image %}
+        <img src="{{ product.image.url }}" alt="{{ product.name }}">
+      {% else %}
+        <svg viewBox="0 0 24 24"><path d="M20.4 6.6L16 4a4 4 0 01-8 0L3.6 6.6a1 1 0 00-.5 1.2l1.1 3.3a1 1 0 001 .7H7V20a1 1 0 001 1h8a1 1 0 001-1v-8.2h1.8a1 1 0 001-.7l1.1-3.3a1 1 0 00-.5-1.2z"/></svg>
+      {% endif %}
+    </div>
+    <div>
+      <h2><a href="{% url 'application:product_detail' product.pk %}">{{ product.name }}</a></h2>
+      <small dir="ltr">{{ product.sku }}</small>
+    </div>
+  </div>
+
+  {# ارسال به همین آدرس با ?product؛ فرم یک POST معمولی است و جاوااسکریپت در آن دخالت نمی‌کند #}
+  <form method="post" action="{{ ui.post_url }}?product={{ product.pk }}" novalidate id="outForm" class="mode-{{ mode }}">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      <div class="alert" role="alert">
+        {% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}
+      </div>
+    {% elif form.errors %}
+      <div class="alert" role="alert">لطفاً خطاهای مشخص‌شده را برطرف کنید.</div>
+    {% endif %}
+
+    {% if form.matrix_rows %}
+      <div class="tools">
+        <button type="button" class="btn-mini" id="clearBtn">پاک کردن همه</button>
+        <span class="sum" id="sumEl" data-label="{% if mode == 'out' %}جمع خروج{% else %}جمع ورود{% endif %}"></span>
+      </div>
+
+      <div class="table-scroll">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th class="corner">رنگ \ سایز</th>
+              {% for s in form.matrix_sizes %}<th>{{ s.name }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for color, cells in form.matrix_rows %}
+              <tr>
+                <th class="row-head"><span class="swatch" style="background: {{ color.hex_code }}"></span>{{ color.name }}</th>
+                {% for cell in cells %}
+                  {% if cell %}
+                    <td>
+                      <div class="mcell {% if cell.variant.stock == 0 %}zero{% elif cell.variant.is_low_stock %}low{% endif %}{% if cell.field.errors %} bad{% endif %}">
+                        <span class="field">{{ cell.field }}</span>
+                        <small class="avail">موجودی: {{ cell.variant.stock }}</small>
+                        {% for e in cell.field.errors %}<small class="err">{{ e }}</small>{% endfor %}
+                      </div>
+                    </td>
+                  {% else %}
+                    <td class="none" title="این ترکیب برای محصول تعریف نشده است">—</td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="note">
+        {% if mode == 'out' %}
+          هر خانه حداکثر به اندازه‌ی موجودی همان ترکیب قابل ثبت است. ترکیب‌های ناموجود قفل هستند.
+        {% else %}
+          تعداد واردشده به موجودی فعلی هر ترکیب اضافه می‌شود. رنگ و سایزی که در جدول نیست، ابتدا باید برای محصول تعریف شود.
+        {% endif %}
+      </p>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="{{ form.warehouse.id_for_label }}">{{ form.warehouse.label }} <b class="req">*</b></label>
+          {{ form.warehouse }}
+          {% for e in form.warehouse.errors %}<small class="err">{{ e }}</small>{% endfor %}
+        </div>
+        <div class="field">
+          <label for="{{ form.note.id_for_label }}">{{ form.note.label }}</label>
+          {{ form.note }}
+          {% for e in form.note.errors %}<small class="err">{{ e }}</small>{% endfor %}
+        </div>
+      </div>
+
+      <div class="actions-bar">
+        <button type="submit" class="btn {{ mode }}">{{ ui.submit }}</button>
+        <a href="{% url 'application:product_detail' product.pk %}" class="btn-ghost">انصراف</a>
+      </div>
+    {% else %}
+      <p class="empty">برای این محصول هنوز رنگ و سایزی ثبت نشده است.</p>
+    {% endif %}
+  </form>
+</section>
+{% endif %}
+
+<section class="card box">
+  <h2>{{ ui.recent_title }}</h2>
+  <p class="lead">{{ ui.recent_lead }}</p>
+  <div class="table-scroll" style="border: 0;">
+    <table class="tx">
+      <thead>
+        <tr><th>کالا</th><th>تعداد</th><th>انبار</th><th>ثبت‌کننده</th><th>توضیحات</th><th>تاریخ</th></tr>
+      </thead>
+      <tbody>
+        {% for t in recent %}
+          <tr>
+            <td><a href="{% url 'application:product_detail' t.variant.product_id %}">{{ t.variant }}</a></td>
+            <td>{{ t.quantity }}</td>
+            <td>{{ t.warehouse }}</td>
+            <td>{{ t.created_by.username|default:"—" }}</td>
+            <td>{{ t.note|default:"—" }}</td>
+            <td>{{ t.created_at|jdatetime }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="empty">{{ ui.recent_empty }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  /*
+    فقط جمع تعداد را نشان می‌دهد و دکمه‌ی «پاک کردن همه» را کار می‌اندازد.
+    هیچ شنونده‌ی submit ندارد و ارسال فرم را تغییر نمی‌دهد.
+  */
+  (function () {
+    var form = document.getElementById('outForm');
+    var sumEl = document.getElementById('sumEl');
+    var label = sumEl ? sumEl.getAttribute('data-label') : '';
+    var clearBtn = document.getElementById('clearBtn');
+    if (!form || !sumEl) return;
+
+    function inputs() { return form.querySelectorAll('input.qty'); }
+
+    function update() {
+      var list = inputs(), items = 0, total = 0;
+      for (var i = 0; i < list.length; i++) {
+        var n = parseInt(list[i].value, 10) || 0;
+        if (n > 0 && !list[i].disabled) { items++; total += n; }
+      }
+      sumEl.textContent = items ? label + ': ' + total + ' عدد در ' + items + ' قلم' : '';
+    }
+
+    form.addEventListener('input', function (e) {
+      if (e.target.classList && e.target.classList.contains('qty')) update();
+    });
+    clearBtn.addEventListener('click', function () {
+      var list = inputs();
+      for (var i = 0; i < list.length; i++) if (!list[i].disabled) list[i].value = '';
+      update();
+    });
+    update();
+    window.addEventListener('pageshow', update);
+  })();
+</script>
+{% endblock %}

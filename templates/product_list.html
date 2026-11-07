@@ -1,0 +1,215 @@
+{% extends "home-base.html" %}
+
+{% block title %}کالاها | سامانه انبارداری{% endblock %}
+{% block page_title %}کالاها{% endblock %}
+{% block page_subtitle %}{{ total_count }} محصول{% if has_filters %} (فیلتر شده){% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .swatch { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); flex-shrink: 0; }
+
+  .toolbar { display: flex; gap: 12px; align-items: stretch; margin-bottom: 18px; flex-wrap: wrap; }
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; flex: 1; padding: 14px; align-items: center; }
+  .filters input, .filters select {
+    background: var(--input); border: 1px solid var(--border); border-radius: 12px; color: var(--text);
+    font: inherit; font-size: .88rem; padding: 10px 14px; outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .filters input[type=search] { flex: 1 1 220px; min-width: 160px; }
+  .filters select { flex: 0 1 170px; }
+  .filters select option { background: var(--panel-solid); }
+  .filters input::placeholder { color: #565e72; }
+  .filters input:focus, .filters select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108, 140, 255, .16); }
+  .btn-sm {
+    border: 0; cursor: pointer; font: inherit; font-size: .88rem; font-weight: 600; color: #fff;
+    padding: 10px 20px; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    box-shadow: 0 8px 22px rgba(108, 140, 255, .25); transition: transform .15s, box-shadow .2s;
+  }
+  .btn-sm:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(108, 140, 255, .38); }
+  .btn-sm.ghost { background: transparent; box-shadow: none; color: var(--muted); border: 1px solid var(--border); font-weight: 500; }
+  .btn-sm.ghost:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); transform: none; }
+  .add-btn { align-self: stretch; padding-inline: 22px; }
+
+  .grid-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 16px; }
+  .pcard { display: flex; flex-direction: column; overflow: hidden; animation: rise .45s ease both; transition: transform .2s, border-color .2s; }
+  .pcard:hover { transform: translateY(-3px); border-color: rgba(108, 140, 255, .4); }
+  .pcard.inactive { opacity: .6; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  .pimg {
+    display: grid; place-items: center; height: 170px; background: rgba(255, 255, 255, .03);
+    border-bottom: 1px solid var(--border); color: #3b4359; position: relative; overflow: hidden;
+  }
+  .pimg img { width: 100%; height: 100%; object-fit: cover; }
+  .pimg svg { width: 54px; height: 54px; stroke-width: 1.2; }
+  .tag-off {
+    position: absolute; top: 10px; right: 10px; font-size: .72rem; padding: 3px 10px; border-radius: 999px;
+    background: rgba(0, 0, 0, .6); color: var(--muted);
+  }
+
+  .pbody { padding: 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+  .ptitle h3 { font-size: 1rem; line-height: 1.5; }
+  .ptitle small { color: var(--muted); font-size: .76rem; direction: ltr; display: inline-block; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { font-size: .73rem; color: var(--muted); padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); }
+  .colors { display: flex; align-items: center; gap: 5px; min-height: 18px; }
+  .colors .more { font-size: .74rem; color: var(--muted); margin-right: 3px; }
+  .colors .none { font-size: .76rem; color: #565e72; }
+
+  .pstock {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 10px;
+    margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .pstock .num { font-size: 1.7rem; font-weight: 700; line-height: 1.1; }
+  .pstock small { display: block; color: var(--muted); font-size: .76rem; margin-top: 3px; }
+  .status { font-size: .75rem; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
+  .status.ok  { background: rgba(61, 220, 151, .13); color: var(--success); }
+  .status.low { background: rgba(245, 184, 75, .14); color: var(--warning); }
+  .status.out { background: rgba(255, 107, 122, .13); color: var(--danger); }
+  .pcard.out .num { color: var(--danger); }
+
+  .detail-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border-radius: 12px;
+    font-size: .88rem; font-weight: 600; color: var(--primary);
+    background: rgba(108, 140, 255, .1); border: 1px solid rgba(108, 140, 255, .3);
+    transition: background .2s, color .2s;
+  }
+  .detail-btn:hover { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; border-color: transparent; }
+  .detail-btn svg { width: 16px; height: 16px; }
+
+  .empty-state { padding: 54px 20px; text-align: center; color: var(--muted); }
+  .empty-state h2 { color: var(--text); font-size: 1.1rem; margin-bottom: 8px; }
+  .empty-state p { margin-bottom: 18px; font-size: .9rem; }
+
+  .pager { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 24px; flex-wrap: wrap; }
+  .pager a, .pager span {
+    min-width: 38px; height: 38px; padding: 0 12px; display: inline-grid; place-items: center;
+    border-radius: 10px; font-size: .88rem; border: 1px solid var(--border); color: var(--muted); background: var(--panel);
+  }
+  .pager a:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
+  .pager .current { color: #fff; border-color: var(--primary); background: linear-gradient(135deg, rgba(108, 140, 255, .35), rgba(139, 92, 246, .3)); }
+  .pager .gap { border: 0; background: none; }
+
+  @media (max-width: 560px) {
+    .filters select { flex: 1 1 140px; }
+    .add-btn { flex: 1 1 100%; justify-content: center; padding-block: 12px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  {# فیلترها یک فرم GET ساده‌اند و بدون جاوااسکریپت کار می‌کنند #}
+  <form method="get" class="card filters" role="search">
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="جستجوی نام، کد مدل، برند یا کد کالا..." aria-label="جستجو">
+    <select name="category" aria-label="دسته‌بندی">
+      <option value="">همه دسته‌بندی‌ها</option>
+      {% for c in categories %}
+        <option value="{{ c.pk }}" {% if filters.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="gender" aria-label="جنسیت">
+      <option value="">همه جنسیت‌ها</option>
+      {% for value, label in genders %}
+        <option value="{{ value }}" {% if filters.gender == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="stock" aria-label="وضعیت موجودی">
+      <option value="">همه وضعیت‌ها</option>
+      <option value="ok"  {% if filters.stock == 'ok' %}selected{% endif %}>موجودی کافی</option>
+      <option value="low" {% if filters.stock == 'low' %}selected{% endif %}>کم‌موجود</option>
+      <option value="out" {% if filters.stock == 'out' %}selected{% endif %}>ناموجود</option>
+    </select>
+    <button type="submit" class="btn-sm">اعمال فیلتر</button>
+    {% if has_filters %}<a href="{% url 'application:product_list' %}" class="btn-sm ghost">پاک کردن</a>{% endif %}
+  </form>
+  <a href="{% url 'application:product_create' %}" class="btn-sm add-btn">+ افزودن کالا</a>
+</div>
+
+{% if page_obj.object_list %}
+  <section class="grid-products">
+    {% for p in page_obj %}
+      <article class="card pcard {{ p.stock_status }}{% if not p.is_active %} inactive{% endif %}">
+        <a href="{% url 'application:product_detail' p.pk %}" class="pimg" aria-label="{{ p.name }}">
+          {% if p.image %}
+            <img src="{{ p.image.url }}" alt="{{ p.name }}" loading="lazy">
+          {% else %}
+            <svg viewBox="0 0 24 24"><path d="M20.4 6.6L16 4a4 4 0 01-8 0L3.6 6.6a1 1 0 00-.5 1.2l1.1 3.3a1 1 0 001 .7H7V20a1 1 0 001 1h8a1 1 0 001-1v-8.2h1.8a1 1 0 001-.7l1.1-3.3a1 1 0 00-.5-1.2z"/></svg>
+          {% endif %}
+          {% if not p.is_active %}<span class="tag-off">غیرفعال</span>{% endif %}
+        </a>
+
+        <div class="pbody">
+          <div class="ptitle">
+            <h3>{{ p.name }}</h3>
+            <small>{{ p.sku }}</small>
+          </div>
+
+          <div class="tags">
+            <span class="tag">{{ p.get_gender_display }}</span>
+            {% if p.category %}<span class="tag">{{ p.category.name }}</span>{% endif %}
+            {% if p.brand %}<span class="tag">{{ p.brand }}</span>{% endif %}
+          </div>
+
+          <div class="colors">
+            {% for c in p.color_list|slice:":8" %}
+              <span class="swatch" style="background: {{ c.hex_code }}" title="{{ c.name }}"></span>
+            {% empty %}
+              <span class="none">رنگ/سایزی ثبت نشده</span>
+            {% endfor %}
+            {% if p.color_list|length > 8 %}<span class="more">+{{ p.color_list|length|add:"-8" }}</span>{% endif %}
+          </div>
+
+          <div class="pstock">
+            <div>
+              <span class="num">{{ p.stock_sum }}</span>
+              <small>موجودی کل · {{ p.variants_n }} ترکیب</small>
+            </div>
+            <span class="status {{ p.stock_status }}">
+              {% if p.stock_status == 'out' %}ناموجود{% elif p.stock_status == 'low' %}کم‌موجود{% else %}موجود{% endif %}
+            </span>
+          </div>
+
+          <a href="{% url 'application:product_detail' p.pk %}" class="detail-btn">
+            مشاهده جزئیات
+            <svg viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          </a>
+        </div>
+      </article>
+    {% endfor %}
+  </section>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="pager" aria-label="صفحه‌بندی">
+      {% if page_obj.has_next %}
+        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">بعدی</a>
+      {% endif %}
+      {% for n in page_range %}
+        {% if n == ellipsis %}
+          <span class="gap">…</span>
+        {% elif n == page_obj.number %}
+          <span class="current" aria-current="page">{{ n }}</span>
+        {% else %}
+          <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ n }}">{{ n }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if page_obj.has_previous %}
+        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">قبلی</a>
+      {% endif %}
+    </nav>
+  {% endif %}
+{% else %}
+  <div class="card empty-state">
+    {% if has_filters %}
+      <h2>محصولی با این فیلترها پیدا نشد</h2>
+      <p>عبارت جستجو یا فیلترها را تغییر دهید.</p>
+      <a href="{% url 'application:product_list' %}" class="btn-sm ghost">پاک کردن فیلترها</a>
+    {% else %}
+      <h2>هنوز کالایی ثبت نشده است</h2>
+      <p>اولین محصول پوشاک را با رنگ‌ها و سایزهایش اضافه کنید.</p>
+      <a href="{% url 'application:product_create' %}" class="btn-sm">+ افزودن کالا</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}
