@@ -1,0 +1,74 @@
+{% extends "report_base.html" %}
+
+{% block title %}تنظیمات | سامانه انبارداری{% endblock %}
+{% block page_title %}تنظیمات{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  .set-card { padding: 20px; margin-bottom: 16px; min-width: 0; }
+  .set-card h2 { font-size: 1.02rem; margin-bottom: 4px; }
+  .set-card .lead { color: var(--muted); font-size: .84rem; margin-bottom: 16px; }
+
+  .field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+  .field label { font-size: .85rem; color: var(--muted); }
+  .req { color: var(--danger); }
+  .help { color: #6a7389; font-size: .76rem; }
+  .err { color: var(--danger); font-size: .8rem; }
+  .field input:not([type=checkbox]):not([type=color]), .field select {
+    width: 100%; background: var(--input); border: 1px solid var(--border); border-radius: 14px;
+    color: var(--text); font: inherit; padding: 12px 14px; outline: none; transition: border-color .2s, box-shadow .2s;
+  }
+  .field input[type=color] { width: 100%; height: 46px; padding: 4px; background: var(--input); border: 1px solid var(--border); border-radius: 14px; cursor: pointer; }
+  .field input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primary); }
+  .field input:focus, .field select:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(108, 140, 255, .16); }
+  .field input[dir=ltr] { text-align: left; }
+  .field select option { background: var(--panel-solid); }
+  .field.check-row { flex-direction: row; align-items: center; gap: 10px; }
+  .field.check-row label { color: var(--text); order: 2; }
+
+  .inline-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; align-items: start; }
+  .inline-form .submit { align-self: end; }
+  .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .form-grid .wide { grid-column: 1 / -1; }
+  .form-errors { color: var(--danger); font-size: .86rem; margin-bottom: 14px; padding: 10px 14px; border: 1px solid rgba(255, 107, 122, .4); border-radius: 12px; }
+
+  .actions-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+  .btn-sm.danger { background: rgba(255, 107, 122, .12); color: var(--danger); border: 1px solid rgba(255, 107, 122, .35); box-shadow: none; }
+  .btn-sm.danger:hover { background: var(--danger); color: #1c0509; transform: none; }
+  .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row-actions form { margin: 0; }
+  .row-actions .btn-sm { padding: 7px 14px; font-size: .8rem; }
+  .b-admin { background: rgba(139, 92, 246, .16); color: #b79cff; }
+  .b-keeper { background: rgba(108, 140, 255, .15); color: var(--primary); }
+  .b-viewer, .b-off { background: rgba(255, 255, 255, .07); color: var(--muted); }
+  .me { color: var(--muted); font-size: .76rem; margin-right: 6px; }
+
+  .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .role-box { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255, 255, 255, .025); font-size: .82rem; color: var(--muted); }
+  .role-box .badge { margin-bottom: 8px; }
+  table.report.narrow { min-width: 520px; }
+
+  @media (max-width: 640px) {
+    .form-grid { grid-template-columns: minmax(0, 1fr); }
+    .actions-bar .btn-sm { flex: 1; justify-content: center; }
+    .row-actions .btn-sm { flex: 1; justify-content: center; padding: 10px 14px; }
+    .set-card { padding: 16px; }
+  }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  /* تأیید حذف؛ اگر جاوااسکریپت اجرا نشود فرم بدون مشکل ارسال می‌شود */
+  document.addEventListener('submit', function (e) {
+    var msg = e.target.getAttribute('data-confirm');
+    if (msg && !window.confirm(msg)) e.preventDefault();
+  });
+</script>
+{% endblock %}
+
+{% block content %}
+{% include "includes/settings_tabs.html" %}
+{% block settings_content %}{% endblock %}
+{% endblock %}

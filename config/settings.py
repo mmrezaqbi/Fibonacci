@@ -138,6 +138,6 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 
 ALLOWED_HOSTS = ['*']
 
-
-LOGIN_REDIRECT_URL = 'application:home'
-LOGOUT_REDIRECT_URL = 'accounts:login'
+LOGIN_URL = "application:login"
+LOGIN_REDIRECT_URL = "application:home"
+LOGOUT_REDIRECT_URL = "application:login"

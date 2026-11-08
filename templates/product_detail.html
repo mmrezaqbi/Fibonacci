@@ -1,5 +1,5 @@
-{% extends "home-base.html" %}
-{% load jalali_tags %}
+{% extends "base.html" %}
+{% load jalali_tags access_tags %}
 
 {% block title %}{{ product.name }} | سامانه انبارداری{% endblock %}
 {% block page_title %}{{ product.name }}{% endblock %}
@@ -13,7 +13,6 @@
   .back svg { width: 16px; height: 16px; }
 
   .hero { display: grid; grid-template-columns: 200px 1fr; gap: 22px; padding: 20px; margin-bottom: 16px; animation: rise .45s ease both; }
-  .hero > * { min-width: 0; }
   @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
   .hero-img {
     border-radius: 14px; overflow: hidden; background: rgba(255, 255, 255, .03); border: 1px solid var(--border);
@@ -21,24 +20,24 @@
   }
   .hero-img img { width: 100%; height: 100%; object-fit: cover; }
   .hero-img svg { width: 60px; height: 60px; stroke-width: 1.2; }
-  .hero h2 { font-size: 1.25rem; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; overflow-wrap: anywhere; }
+  .hero h2 { font-size: 1.25rem; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .badge { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: .74rem; font-weight: 400; }
   .b-off { background: rgba(255, 107, 122, .12); color: var(--danger); }
   .info { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px 22px; margin-top: 14px; }
   .info dt { color: var(--muted); font-size: .76rem; margin-bottom: 3px; }
-  .info dd { font-size: .92rem; overflow-wrap: anywhere; }
-  .desc { margin-top: 14px; color: var(--muted); font-size: .88rem; line-height: 1.9; overflow-wrap: anywhere; }
+  .info dd { font-size: .92rem; }
+  .desc { margin-top: 14px; color: var(--muted); font-size: .88rem; line-height: 1.9; }
 
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
-  .stat { padding: 18px; min-width: 0; }
+  .stat { padding: 18px; }
   .stat span { color: var(--muted); font-size: .82rem; }
-  .stat b { display: block; font-size: 1.65rem; margin-top: 8px; overflow-wrap: anywhere; }
+  .stat b { display: block; font-size: 1.65rem; margin-top: 8px; }
   .stat small { color: var(--muted); font-size: .76rem; }
   .stat.warn b { color: var(--warning); }
   .stat.bad b { color: var(--danger); }
   .stat.good b { color: var(--success); }
 
-  .section { padding: 22px; margin-bottom: 16px; min-width: 0; }
+  .section { padding: 22px; margin-bottom: 16px; }
   .section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .section-head h2 { font-size: 1.02rem; }
   .move-btns { margin-right: auto; display: flex; gap: 8px; }
@@ -58,7 +57,7 @@
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
   .legend .l-ok { background: var(--success); } .legend .l-low { background: var(--warning); } .legend .l-zero { background: var(--danger); }
 
-  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 14px; }
+  .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
   table { border-collapse: collapse; width: 100%; }
   .matrix { min-width: 420px; }
   .matrix th, .matrix td { padding: 12px 14px; text-align: center; border-bottom: 1px solid var(--border); }
@@ -66,7 +65,7 @@
   .matrix .corner { text-align: right; font-weight: 500; }
   .matrix .row-head {
     text-align: right; white-space: nowrap; font-size: .9rem; font-weight: 500;
-    background: rgba(255, 255, 255, .02); position: sticky; right: 0;
+    background: #141925; position: sticky; right: 0; z-index: 1;
   }
   .row-head .swatch { vertical-align: middle; margin-left: 9px; }
   .matrix .cell { font-size: 1rem; font-weight: 700; }
@@ -79,54 +78,23 @@
   .matrix tbody tr:hover .cell { filter: brightness(1.25); }
   .matrix tfoot th, .matrix tfoot td { border-bottom: 0; border-top: 1px solid rgba(255, 255, 255, .14); }
 
-  .note { margin-top: 12px; color: #6a7389; font-size: .78rem; line-height: 1.8; }
+  .note { margin-top: 12px; color: #6a7389; font-size: .78rem; }
   .empty { text-align: center; color: var(--muted); padding: 28px 0 8px; font-size: .9rem; }
 
   .tx { font-size: .88rem; min-width: 480px; }
-  .tx th { text-align: right; color: var(--muted); font-weight: 500; font-size: .78rem; padding: 0 10px 12px; white-space: nowrap; }
+  .tx th { text-align: right; color: var(--muted); font-weight: 500; font-size: .78rem; padding: 0 10px 12px; }
   .tx td { padding: 12px 10px; border-top: 1px solid var(--border); white-space: nowrap; }
   .b-in  { background: rgba(61, 220, 151, .13); color: var(--success); }
   .b-out { background: rgba(255, 107, 122, .12); color: var(--danger); }
 
-  /* ---------- Responsive ---------- */
   @media (max-width: 1000px) { .stats { grid-template-columns: repeat(2, 1fr); } }
-
-  /* Tablet portrait: slimmer image column */
-  @media (max-width: 900px) {
-    .hero { grid-template-columns: 160px 1fr; gap: 18px; }
-    .hero-img { min-height: 160px; }
-  }
-
   @media (max-width: 700px) {
-    .hero { grid-template-columns: 1fr; padding: 16px; }
+    .hero { grid-template-columns: 1fr; }
     .hero-img { min-height: 220px; max-height: 260px; }
-    .info { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px 16px; }
-
-    .section { padding: 16px; }
-    .stat { padding: 16px; }
-    .stat b { font-size: 1.45rem; }
-
-    /* action buttons on their own full-width row */
-    .section-head { margin-bottom: 14px; }
-    .move-btns { margin-right: 0; flex: 1 1 100%; order: 3; }
-    .btn-in, .btn-out { flex: 1; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; font-size: .88rem; }
-    .legend { order: 2; flex: 1 1 100%; gap: 12px; }
-
-    /* matrix: opaque sticky first column so scrolling cells never show through */
-    .matrix th, .matrix td { padding: 10px 11px; }
-    .matrix .row-head { background: #151a26; z-index: 1; font-size: .84rem; box-shadow: -1px 0 0 var(--border) inset; }
-    .matrix .corner { position: sticky; right: 0; z-index: 2; background: #1a2030; }
-    .matrix .cell { font-size: .95rem; }
-    .tx td { padding: 11px 9px; }
-  }
-
-  @media (max-width: 520px) {
-    .hero h2 { font-size: 1.1rem; }
-    .back { min-height: 40px; }
-    .note { font-size: .74rem; }
   }
   @media (max-width: 420px) { .stats { grid-template-columns: 1fr; } }
 </style>
+{% include "includes/favicon.html" %}
 {% endblock %}
 
 {% block content %}
@@ -184,10 +152,12 @@
 <section class="card section">
   <div class="section-head">
     <h2>موجودی هر رنگ و هر سایز</h2>
+    {% if request.user|has_role:"keeper" %}
     <div class="move-btns">
       <a href="{% url 'application:stock_in' %}?product={{ product.pk }}" class="btn-in">ثبت ورود</a>
       <a href="{% url 'application:stock_out' %}?product={{ product.pk }}" class="btn-out">ثبت خروج</a>
     </div>
+    {% endif %}
     <div class="legend">
       <span><i class="l-ok"></i>موجود</span>
       <span><i class="l-low"></i>کم‌موجود</span>
@@ -238,21 +208,21 @@
 <section class="card section">
   <div class="section-head"><h2>آخرین تراکنش‌های این محصول</h2></div>
   <div class="table-scroll" style="border: 0;">
-    <table class="tx">
+    <table class="tx stack">
       <thead>
         <tr><th>رنگ / سایز</th><th>نوع</th><th>تعداد</th><th>انبار</th><th>ثبت‌کننده</th><th>تاریخ</th></tr>
       </thead>
       <tbody>
         {% for t in transactions %}
           <tr>
-            <td>{{ t.variant.color.name }} / {{ t.variant.size.name }}</td>
-            <td>
+            <td data-label="رنگ / سایز">{{ t.variant.color.name }} / {{ t.variant.size.name }}</td>
+            <td data-label="نوع">
               {% if t.type == 'in' %}<span class="badge b-in">ورود</span>{% else %}<span class="badge b-out">خروج</span>{% endif %}
             </td>
-            <td>{{ t.quantity }}</td>
-            <td>{{ t.warehouse }}</td>
-            <td>{{ t.created_by.username|default:"—" }}</td>
-            <td>{{ t.created_at|jdatetime }}</td>
+            <td data-label="تعداد">{{ t.quantity }}</td>
+            <td data-label="انبار">{{ t.warehouse }}</td>
+            <td data-label="ثبت‌کننده">{{ t.created_by.username|default:"—" }}</td>
+            <td data-label="تاریخ">{{ t.created_at|jdatetime }}</td>
           </tr>
         {% empty %}
           <tr><td colspan="6" class="empty">هنوز تراکنشی برای این محصول ثبت نشده است.</td></tr>

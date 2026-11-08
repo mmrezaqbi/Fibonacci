@@ -1,0 +1,23 @@
+{% extends "settings_base.html" %}
+
+{% block page_subtitle %}{{ title }}{% endblock %}
+
+{% block settings_content %}
+<section class="card set-card">
+  <h2>{{ title }}</h2>
+  {% if lead %}<p class="lead">{{ lead }}</p>{% endif %}
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="form-errors">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+    <div class="form-grid">
+      {% for field in form %}
+        {% include "includes/field.html" with field=field %}
+      {% endfor %}
+    </div>
+    <div class="actions-bar">
+      <button type="submit" class="btn-sm">{{ submit }}</button>
+      <a href="{{ cancel_url }}" class="btn-sm ghost">انصراف</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

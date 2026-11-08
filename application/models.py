@@ -1,4 +1,3 @@
-from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
@@ -247,3 +246,84 @@ class StockTransaction(models.Model):
                 ProductVariant.objects.filter(pk=variant.pk).update(stock=F("stock") + self.quantity)
 
             super().save(*args, **kwargs)
+
+
+# ===========================================================================
+# اتصال به ووکامرس (وردپرس)
+# ===========================================================================
+class WooSettings(models.Model):
+    """تنظیمات اتصال به ووکامرس (فقط یک ردیف)."""
+
+    site_url = models.CharField("آدرس سایت", max_length=255, blank=True, help_text="مثلاً https://example.com")
+    consumer_key = models.CharField("Consumer key", max_length=120, blank=True)
+    consumer_secret = models.CharField("Consumer secret", max_length=120, blank=True)
+    webhook_secret = models.CharField("کلید وب‌هوک (Secret)", max_length=120, blank=True)
+    default_warehouse = models.ForeignKey(
+        Warehouse, verbose_name="انبار ثبت سفارش‌های سایت", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+        help_text="خروج کالا بابت سفارش‌های سایت از این انبار ثبت می‌شود.",
+    )
+    enabled = models.BooleanField("همگام‌سازی فعال است", default=False)
+    sync_started_at = models.DateTimeField("شروع همگام‌سازی", null=True, blank=True, editable=False)
+    last_order_pull = models.DateTimeField("آخرین دریافت سفارش‌ها", null=True, blank=True, editable=False)
+
+    class Meta:
+        verbose_name = "تنظیمات ووکامرس"
+        verbose_name_plural = "تنظیمات ووکامرس"
+
+    def __str__(self):
+        return "تنظیمات ووکامرس"
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    @property
+    def configured(self):
+        return bool(self.site_url and self.consumer_key and self.consumer_secret)
+
+
+class WooProductLink(models.Model):
+    product = models.OneToOneField(Product, on_delete=models.CASCADE, related_name="woo_link")
+    woo_id = models.PositiveIntegerField("شناسه در ووکامرس")
+
+
+class WooVariantLink(models.Model):
+    variant = models.OneToOneField(ProductVariant, on_delete=models.CASCADE, related_name="woo_link")
+    woo_id = models.PositiveIntegerField("شناسه‌ی تنوع در ووکامرس")
+
+
+class WooOrder(models.Model):
+    """سفارش‌های سایت که موجودی‌شان در انبار اعمال شده؛ برای جلوگیری از کسر تکراری."""
+
+    order_id = models.BigIntegerField(unique=True)
+    status = models.CharField(max_length=30, blank=True)
+    deducted = models.BooleanField(default=False)
+    lines = models.JSONField(default=list, blank=True)  # [{"variant": id, "qty": n}]
+    note = models.CharField(max_length=500, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+
+class WooLog(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    ok = models.BooleanField(default=True)
+    message = models.CharField(max_length=500)
+
+    class Meta:
+        ordering = ["-id"]
+
+
+from django.db.models.signals import post_save  # noqa: E402
+from django.dispatch import receiver  # noqa: E402
+
+
+@receiver(post_save, sender=StockTransaction)
+def _push_stock_to_woocommerce(sender, instance, created, **kwargs):
+    """بعد از هر ورود/خروج، موجودی همان کالا به ووکامرس ارسال می‌شود (پس‌زمینه، بدون کند کردن فرم)."""
+    if created and not getattr(instance, "_skip_woo", False):
+        from .woo_sync import schedule_push
+        schedule_push(instance.variant_id)

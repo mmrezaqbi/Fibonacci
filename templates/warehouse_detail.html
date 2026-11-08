@@ -1,0 +1,127 @@
+{% extends "report_base.html" %}
+{% load jalali_tags %}
+
+{% block title %}{{ warehouse.name }} | سامانه انبارداری{% endblock %}
+{% block page_title %}{{ warehouse.name }}{% endblock %}
+{% block page_subtitle %}{{ warehouse.address|default:"موجودی این انبار بر اساس تراکنش‌های ثبت‌شده" }}{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  .back { display: inline-block; color: var(--muted); font-size: .85rem; margin-bottom: 14px; }
+  .back:hover { color: var(--text); }
+  .b-off { background: rgba(255, 255, 255, .07); color: var(--muted); }
+  .b-neg { background: rgba(255, 107, 122, .12); color: var(--danger); }
+  .b-zero { background: rgba(255, 255, 255, .07); color: var(--muted); }
+  .note-box { padding: 12px 14px; margin-bottom: 16px; border-color: rgba(255, 107, 122, .4); color: var(--danger); font-size: .86rem; }
+  .report td.num b, .stat b { unicode-bidi: plaintext; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .cv { display: inline-flex; align-items: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="{% url 'application:warehouse_list' %}" class="back">→ بازگشت به انبارها</a>
+
+<section class="stats">
+  <div class="card stat">
+    <span>وضعیت</span>
+    <b style="font-size: 1.1rem;">{% if warehouse.is_active %}<span class="badge b-ok">فعال</span>{% else %}<span class="badge b-off">غیرفعال</span>{% endif %}</b>
+    <small>{% if summary.last_at %}آخرین تراکنش: {{ summary.last_at|jdatetime }}{% else %}بدون تراکنش{% endif %}</small>
+  </div>
+  <div class="card stat {% if summary.net < 0 %}bad{% endif %}"><span>موجودی انبار</span><b>{{ summary.net }}</b><small>ورود منهای خروج</small></div>
+  <div class="card stat in"><span>مجموع ورود</span><b>{{ summary.sum_in }}</b><small>عدد کالا</small></div>
+  <div class="card stat out"><span>مجموع خروج</span><b>{{ summary.sum_out }}</b><small>عدد کالا</small></div>
+  <div class="card stat"><span>رنگ/سایز دارای موجودی</span><b>{{ summary.positive }}</b><small>در این انبار</small></div>
+</section>
+
+{% if summary.negative %}
+<div class="card note-box">
+  برای {{ summary.negative }} رنگ/سایز، خروج بیشتر از ورود در این انبار ثبت شده است (موجودی منفی). احتمالاً کالا از انبار دیگری ثبت ورود شده است.
+</div>
+{% endif %}
+
+<div class="cols">
+<section class="card panel">
+  <div class="panel-head">
+    <h2>موجودی هر رنگ و سایز <small>({{ total_count }} مورد)</small></h2>
+  </div>
+
+  <form method="get" class="filters" role="search" style="padding: 0 0 14px; margin: 0;">
+    <div class="f grow">
+      <label class="t" for="f-q">جستجو</label>
+      <input type="search" id="f-q" name="q" value="{{ filters.q }}" placeholder="نام کالا یا کد...">
+    </div>
+    <label class="check">
+      <input type="checkbox" name="show" value="all" {% if filters.show == 'all' %}checked{% endif %}>
+      نمایش موجودی صفر
+    </label>
+    <div class="btns">
+      <button type="submit" class="btn-sm">اعمال</button>
+      {% if has_filters %}<a href="{% url 'application:warehouse_detail' warehouse.pk %}" class="btn-sm ghost">پاک کردن</a>{% endif %}
+    </div>
+  </form>
+
+  <div class="table-scroll">
+    <table class="report stack">
+      <thead>
+        <tr>
+          <th>کالا</th><th>رنگ</th><th>سایز</th>
+          <th class="num">ورود</th><th class="num">خروج</th><th class="num">موجودی</th><th>وضعیت</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in page_obj %}
+          <tr>
+            <td data-label="کالا"><a href="{% url 'application:product_detail' v.product_id %}">{{ v.product.name }}</a></td>
+            <td data-label="رنگ"><span class="cv"><span class="swatch" style="background: {{ v.color.hex_code }}"></span>{{ v.color.name }}</span></td>
+            <td data-label="سایز">{{ v.size.name }}</td>
+            <td data-label="ورود" class="num">{{ v.w_in }}</td>
+            <td data-label="خروج" class="num">{{ v.w_out }}</td>
+            <td data-label="موجودی" class="num"><b>{{ v.w_net }}</b></td>
+            <td data-label="وضعیت">
+              {% if v.state == 'neg' %}<span class="badge b-neg">منفی</span>
+              {% elif v.state == 'zero' %}<span class="badge b-zero">صفر</span>
+              {% else %}<span class="badge b-ok">موجود</span>{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="empty">
+            {% if has_filters %}موردی با این فیلتر پیدا نشد.{% else %}هنوز کالایی در این انبار موجود نیست.{% endif %}
+          </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "includes/pager.html" %}
+</section>
+
+<section class="card panel">
+  <div class="panel-head">
+    <h2>آخرین تراکنش‌ها</h2>
+    <a href="{% url 'application:report_transactions' %}?warehouse={{ warehouse.pk }}" class="btn-sm ghost">همه‌ی تراکنش‌ها</a>
+  </div>
+  <div class="table-scroll">
+    <table class="report stack">
+      <thead>
+        <tr><th>تاریخ</th><th>نوع</th><th>کالا</th><th>رنگ / سایز</th><th class="num">تعداد</th><th>ثبت‌کننده</th></tr>
+      </thead>
+      <tbody>
+        {% for t in recent %}
+          <tr>
+            <td data-label="تاریخ">{{ t.created_at|jdatetime }}</td>
+            <td data-label="نوع">{% if t.type == 'in' %}<span class="badge b-in">ورود</span>{% else %}<span class="badge b-out">خروج</span>{% endif %}</td>
+            <td data-label="کالا"><a href="{% url 'application:product_detail' t.variant.product_id %}">{{ t.variant.product.name }}</a></td>
+            <td data-label="رنگ / سایز"><span class="cv"><span class="swatch" style="background: {{ t.variant.color.hex_code }}"></span>{{ t.variant.color.name }} / {{ t.variant.size.name }}</span></td>
+            <td data-label="تعداد" class="num">{{ t.quantity }}</td>
+            <td data-label="ثبت‌کننده">{{ t.created_by.username|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="empty">هنوز تراکنشی برای این انبار ثبت نشده است.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+</div>
+{% endblock %}

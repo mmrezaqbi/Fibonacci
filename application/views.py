@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
+from .permissions import role_required
 from .forms import ProductCreateForm, StockInForm, StockOutForm
 from .models import Category, Product, ProductVariant, StockTransaction
 
@@ -176,7 +177,7 @@ def product_detail(request, pk):
     })
 
 
-@login_required
+@role_required("keeper")
 def product_create(request):
     if request.method == "POST":
         form = ProductCreateForm(request.POST, request.FILES, user=request.user)
@@ -243,7 +244,7 @@ def _stock_movement(request, *, form_class, ui):
     })
 
 
-@login_required
+@role_required("keeper")
 def stock_out(request):
     return _stock_movement(request, form_class=StockOutForm, ui={
         "title": "خروج از انبار",
@@ -260,7 +261,7 @@ def stock_out(request):
     })
 
 
-@login_required
+@role_required("keeper")
 def stock_in(request):
     return _stock_movement(request, form_class=StockInForm, ui={
         "title": "ورود به انبار",

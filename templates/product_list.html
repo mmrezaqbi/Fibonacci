@@ -1,4 +1,5 @@
-{% extends "home-base.html" %}
+{% extends "base.html" %}
+{% load access_tags %}
 
 {% block title %}کالاها | سامانه انبارداری{% endblock %}
 {% block page_title %}کالاها{% endblock %}
@@ -9,7 +10,7 @@
   .swatch { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); flex-shrink: 0; }
 
   .toolbar { display: flex; gap: 12px; align-items: stretch; margin-bottom: 18px; flex-wrap: wrap; }
-  .filters { display: flex; flex-wrap: wrap; gap: 10px; flex: 1; padding: 14px; align-items: center; }
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; flex: 1; min-width: 0; padding: 14px; align-items: center; }
   .filters input, .filters select {
     background: var(--input); border: 1px solid var(--border); border-radius: 12px; color: var(--text);
     font: inherit; font-size: .88rem; padding: 10px 14px; outline: none;
@@ -92,6 +93,8 @@
   .pager .gap { border: 0; background: none; }
 
   @media (max-width: 560px) {
+    .filters input[type=search] { flex: 1 1 100%; }
+    .filters .btn-sm { flex: 1; justify-content: center; }
     .filters select { flex: 1 1 140px; }
     .add-btn { flex: 1 1 100%; justify-content: center; padding-block: 12px; }
   }
@@ -124,7 +127,7 @@
     <button type="submit" class="btn-sm">اعمال فیلتر</button>
     {% if has_filters %}<a href="{% url 'application:product_list' %}" class="btn-sm ghost">پاک کردن</a>{% endif %}
   </form>
-  <a href="{% url 'application:product_create' %}" class="btn-sm add-btn">+ افزودن کالا</a>
+  {% if request.user|has_role:"keeper" %}<a href="{% url 'application:product_create' %}" class="btn-sm add-btn">+ افزودن کالا</a>{% endif %}
 </div>
 
 {% if page_obj.object_list %}
@@ -180,25 +183,7 @@
     {% endfor %}
   </section>
 
-  {% if page_obj.paginator.num_pages > 1 %}
-    <nav class="pager" aria-label="صفحه‌بندی">
-      {% if page_obj.has_next %}
-        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">بعدی</a>
-      {% endif %}
-      {% for n in page_range %}
-        {% if n == ellipsis %}
-          <span class="gap">…</span>
-        {% elif n == page_obj.number %}
-          <span class="current" aria-current="page">{{ n }}</span>
-        {% else %}
-          <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ n }}">{{ n }}</a>
-        {% endif %}
-      {% endfor %}
-      {% if page_obj.has_previous %}
-        <a href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">قبلی</a>
-      {% endif %}
-    </nav>
-  {% endif %}
+  {% include "includes/pager.html" %}
 {% else %}
   <div class="card empty-state">
     {% if has_filters %}
@@ -207,8 +192,10 @@
       <a href="{% url 'application:product_list' %}" class="btn-sm ghost">پاک کردن فیلترها</a>
     {% else %}
       <h2>هنوز کالایی ثبت نشده است</h2>
+      {% if request.user|has_role:"keeper" %}
       <p>اولین محصول پوشاک را با رنگ‌ها و سایزهایش اضافه کنید.</p>
       <a href="{% url 'application:product_create' %}" class="btn-sm">+ افزودن کالا</a>
+      {% endif %}
     {% endif %}
   </div>
 {% endif %}

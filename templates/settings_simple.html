@@ -1,0 +1,67 @@
+{% extends "settings_base.html" %}
+
+{% block page_subtitle %}{{ cfg.subtitle }}{% endblock %}
+
+{% block settings_content %}
+<section class="card set-card">
+  <h2>{{ cfg.add_title }}</h2>
+  <p class="lead">{% if kind == 'warehouse' %}پس از ذخیره، در فرم‌های ورود و خروج کالا قابل انتخاب است.{% else %}پس از ذخیره، بلافاصله در فرم «افزودن کالا» قابل انتخاب است.{% endif %}</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="form-errors">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+    <div class="inline-form">
+      {% for field in form %}{% include "includes/field.html" with field=field %}{% endfor %}
+      <div class="submit"><button type="submit" class="btn-sm" style="width: 100%; justify-content: center;">+ افزودن</button></div>
+    </div>
+  </form>
+</section>
+
+<section class="card panel">
+  <div class="panel-head"><h2>{{ cfg.title }} <small>({{ items|length }} مورد)</small></h2></div>
+  <div class="table-scroll">
+    <table class="report stack narrow">
+      <thead>
+        <tr>
+          <th>{{ cfg.singular }}</th>
+          {% if kind == 'color' %}<th>کد کوتاه</th><th>کد HEX</th>{% elif kind == 'warehouse' %}<th>آدرس</th><th>وضعیت</th>{% else %}<th class="num">ترتیب نمایش</th>{% endif %}
+          <th class="num">{{ cfg.used_label }}</th><th>عملیات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+          <tr>
+            <td data-label="{{ cfg.singular }}">
+              {% if kind == 'color' %}<span class="cv"><span class="swatch" style="background: {{ it.hex_code }}"></span>{{ it.name }}</span>{% elif kind == 'warehouse' %}<a href="{% url 'application:warehouse_detail' it.pk %}"><b>{{ it.name }}</b></a>{% else %}<b>{{ it.name }}</b>{% endif %}
+            </td>
+            {% if kind == 'color' %}
+              <td data-label="کد کوتاه" dir="ltr" style="text-align: right;">{{ it.code|default:"—" }}</td>
+              <td data-label="کد HEX" dir="ltr" style="text-align: right; color: var(--muted);">{{ it.hex_code }}</td>
+            {% elif kind == 'warehouse' %}
+              <td data-label="آدرس" style="white-space: normal; color: var(--muted);">{{ it.address|default:"—" }}</td>
+              <td data-label="وضعیت">{% if it.is_active %}<span class="badge b-ok">فعال</span>{% else %}<span class="badge b-off">غیرفعال</span>{% endif %}</td>
+            {% else %}
+              <td data-label="ترتیب نمایش" class="num">{{ it.sort_order }}</td>
+            {% endif %}
+            <td data-label="{{ cfg.used_label }}" class="num">{{ it.used }}</td>
+            <td data-label="عملیات">
+              <div class="row-actions">
+                <a href="{{ it.edit_href }}" class="btn-sm ghost">ویرایش</a>
+                {% if it.used %}
+                  <span class="btn-sm ghost" style="opacity: .45; cursor: not-allowed;" title="سابقه دارد و حذف نمی‌شود">حذف</span>
+                {% else %}
+                  <form method="post" action="{{ it.delete_href }}" data-confirm="{{ cfg.singular }} «{{ it.name }}» حذف شود؟">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-sm danger">حذف</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="empty">هنوز {{ cfg.singular }}ی ثبت نشده است.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "settings_base.html" %}
+{% load jalali_tags %}
+
+{% block page_subtitle %}همگام‌سازی دوطرفه‌ی موجودی انبار با فروشگاه ووکامرس{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  .steps { color: var(--muted); font-size: .86rem; line-height: 2; padding-right: 20px; }
+  .steps code, .url-box { direction: ltr; unicode-bidi: plaintext; background: var(--input); border: 1px solid var(--border); border-radius: 8px; padding: 2px 8px; font-size: .8rem; color: var(--text); }
+  .url-box { display: block; padding: 10px 12px; margin: 10px 0; overflow-wrap: anywhere; text-align: left; user-select: all; }
+  .act-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .act { border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: rgba(255, 255, 255, .025); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .act p { color: var(--muted); font-size: .8rem; flex: 1; }
+  .act .btn-sm { justify-content: center; width: 100%; }
+  .log-msg { white-space: normal !important; min-width: 220px; }
+</style>
+{% endblock %}
+
+{% block settings_content %}
+<section class="stats">
+  <div class="card stat {% if s.enabled %}good{% endif %}"><span>وضعیت</span>
+    <b style="font-size: 1.1rem;">{% if s.enabled %}فعال{% else %}غیرفعال{% endif %}</b>
+    <small>{% if s.last_order_pull %}آخرین دریافت سفارش: {{ s.last_order_pull|jdatetime }}{% else %}سفارشی دریافت نشده{% endif %}</small></div>
+  <div class="card stat"><span>محصولات وصل‌شده</span><b>{{ stats.products }}</b><small>در ووکامرس</small></div>
+  <div class="card stat"><span>رنگ/سایزهای وصل‌شده</span><b>{{ stats.variants }}</b><small>متغیر در ووکامرس</small></div>
+  <div class="card stat {% if stats.unlinked %}warn{% endif %}"><span>هنوز ارسال‌نشده</span><b>{{ stats.unlinked }}</b><small>با «ارسال کامل» ساخته می‌شوند</small></div>
+</section>
+
+<section class="card set-card">
+  <h2>اتصال به ووکامرس</h2>
+  <p class="lead">در وردپرس: ووکامرس ← تنظیمات ← پیشرفته ← REST API ← «افزودن کلید» با دسترسی <b>Read/Write</b>. کلیدها را اینجا وارد کنید.</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save">
+    {% if form.non_field_errors %}<div class="form-errors">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+    <div class="form-grid">
+      {% for field in form %}{% include "includes/field.html" with field=field %}{% endfor %}
+    </div>
+    <div class="actions-bar"><button type="submit" class="btn-sm">ذخیره تنظیمات</button></div>
+  </form>
+</section>
+
+<section class="card set-card">
+  <h2>عملیات</h2>
+  <p class="lead">ابتدا تنظیمات را ذخیره کنید.</p>
+  <div class="act-grid">
+    <form method="post" class="act">{% csrf_token %}<input type="hidden" name="action" value="test">
+      <p>بررسی می‌کند آدرس و کلیدهای API درست‌اند.</p>
+      <button type="submit" class="btn-sm ghost">تست اتصال</button></form>
+    <form method="post" class="act" data-confirm="همه‌ی کالاهای انبار در ووکامرس ساخته (به‌صورت پیش‌نویس) و موجودی آن‌ها با انبار یکی می‌شود. ادامه می‌دهید؟">{% csrf_token %}<input type="hidden" name="action" value="sync_all">
+      <p>محصولات و رنگ/سایزهای ساخته‌نشده را در سایت می‌سازد و موجودی همه را با انبار یکی می‌کند. برای بار اول و رفع ناهمخوانی.</p>
+      <button type="submit" class="btn-sm">ارسال کامل کالاها و موجودی</button></form>
+    <form method="post" class="act">{% csrf_token %}<input type="hidden" name="action" value="pull">
+      <p>سفارش‌های جدید سایت را می‌گیرد و خروج آن‌ها را در انبار ثبت می‌کند (اگر وب‌هوک ندارید).</p>
+      <button type="submit" class="btn-sm export">دریافت سفارش‌های سایت</button></form>
+  </div>
+</section>
+
+<section class="card set-card">
+  <h2>وب‌هوک (دریافت فوری سفارش‌ها)</h2>
+  <ol class="steps">
+    <li>ووکامرس ← تنظیمات ← پیشرفته ← Webhooks ← افزودن</li>
+    <li>Topic: <code>Order created</code> و یک وب‌هوک دیگر با <code>Order updated</code>؛ API version: <code>WP REST API v3</code></li>
+    <li>Delivery URL:<span class="url-box">{{ webhook_url }}</span></li>
+    <li>Secret را همان «کلید وب‌هوک» بالا بگذارید و ذخیره کنید.</li>
+  </ol>
+  <p class="lead" style="margin-top: 10px;">سایت باید بتواند این آدرس را باز کند؛ روی کامپیوتر شخصی (localhost) کار نمی‌کند. آنجا از «دریافت سفارش‌های سایت» یا دستور <code>python manage.py woo_pull</code> (زمان‌بندی‌شده) استفاده کنید.</p>
+</section>
+
+{% if problem_orders %}
+<section class="card panel">
+  <div class="panel-head"><h2>سفارش‌های نیازمند بررسی</h2></div>
+  <div class="table-scroll"><table class="report stack narrow">
+    <thead><tr><th>سفارش</th><th>وضعیت</th><th>توضیح</th></tr></thead>
+    <tbody>{% for o in problem_orders %}
+      <tr><td data-label="سفارش">#{{ o.order_id }}</td><td data-label="وضعیت">{{ o.status }}</td><td data-label="توضیح" class="log-msg">{{ o.note }}</td></tr>
+    {% endfor %}</tbody></table></div>
+</section>
+{% endif %}
+
+<section class="card panel">
+  <div class="panel-head"><h2>گزارش اخیر همگام‌سازی</h2></div>
+  <div class="table-scroll"><table class="report stack narrow">
+    <thead><tr><th>زمان</th><th>نتیجه</th><th>پیام</th></tr></thead>
+    <tbody>
+      {% for l in logs %}
+        <tr>
+          <td data-label="زمان">{{ l.created_at|jdatetime }}</td>
+          <td data-label="نتیجه">{% if l.ok %}<span class="badge b-ok">موفق</span>{% else %}<span class="badge b-out">خطا</span>{% endif %}</td>
+          <td data-label="پیام" class="log-msg">{{ l.message }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3" class="empty">هنوز رویدادی ثبت نشده است.</td></tr>
+      {% endfor %}
+    </tbody></table></div>
+</section>
+{% endblock %}

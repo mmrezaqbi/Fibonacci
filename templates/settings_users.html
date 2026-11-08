@@ -1,0 +1,52 @@
+{% extends "settings_base.html" %}
+{% load jalali_tags %}
+
+{% block page_subtitle %}افزودن و حذف کاربر و تعیین سطح دسترسی{% endblock %}
+
+{% block settings_content %}
+<section class="card set-card">
+  <h2>سطح‌های دسترسی</h2>
+  <p class="lead">هر کاربر دقیقاً یک سطح دارد.</p>
+  <div class="roles">
+    {% for key, label, desc in roles %}
+      <div class="role-box"><span class="badge b-{{ key }}">{{ label }}</span><br>{{ desc }}</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card panel">
+  <div class="panel-head">
+    <h2>کاربران <small>({{ users|length }} نفر)</small></h2>
+    <a href="{% url 'application:user_create' %}" class="btn-sm">+ افزودن کاربر</a>
+  </div>
+  <div class="table-scroll">
+    <table class="report stack">
+      <thead>
+        <tr><th>نام کاربری</th><th>نام</th><th>سطح دسترسی</th><th>وضعیت</th><th>آخرین ورود</th><th>عملیات</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td data-label="نام کاربری"><b dir="ltr">{{ u.username }}</b>{% if u.is_me %}<span class="me">(شما)</span>{% endif %}</td>
+            <td data-label="نام">{{ u.get_full_name|default:"—" }}</td>
+            <td data-label="سطح دسترسی"><span class="badge b-{{ u.role_key }}">{{ u.role_label }}</span></td>
+            <td data-label="وضعیت">{% if u.is_active %}<span class="badge b-ok">فعال</span>{% else %}<span class="badge b-off">غیرفعال</span>{% endif %}</td>
+            <td data-label="آخرین ورود">{% if u.last_login %}{{ u.last_login|jdatetime }}{% else %}—{% endif %}</td>
+            <td data-label="عملیات">
+              <div class="row-actions">
+                <a href="{% url 'application:user_edit' u.pk %}" class="btn-sm ghost">ویرایش</a>
+                {% if not u.is_me %}
+                  <form method="post" action="{% url 'application:user_delete' u.pk %}" data-confirm="کاربر «{{ u.username }}» حذف شود؟ (برای حفظ سابقه بهتر است به‌جای حذف، حساب را غیرفعال کنید)">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-sm danger">حذف</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

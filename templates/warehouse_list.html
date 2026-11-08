@@ -1,0 +1,87 @@
+{% extends "report_base.html" %}
+{% load jalali_tags access_tags %}
+
+{% block title %}انبارها | سامانه انبارداری{% endblock %}
+{% block page_title %}انبارها{% endblock %}
+{% block page_subtitle %}فهرست انبارها و موجودی هر کدام (بر اساس ورود و خروج‌های ثبت‌شده){% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  .wh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+  .wh { padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; animation: rise .45s ease both; transition: border-color .2s, transform .15s; }
+  .wh:hover { border-color: rgba(108, 140, 255, .45); transform: translateY(-2px); }
+  .wh.off { opacity: .72; }
+  .wh-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .wh-top h2 { font-size: 1.05rem; overflow-wrap: anywhere; }
+  .wh-addr { color: var(--muted); font-size: .8rem; margin-top: 4px; overflow-wrap: anywhere; }
+  .wh-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .wh-nums div { background: rgba(255, 255, 255, .03); border: 1px solid var(--border); border-radius: 12px; padding: 10px; min-width: 0; }
+  .wh-nums span { display: block; color: var(--muted); font-size: .72rem; }
+  .wh-nums b { display: block; margin-top: 4px; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+  .wh-nums b { unicode-bidi: plaintext; }
+  .wh-nums b.neg { color: var(--danger); direction: ltr; text-align: right; }
+  .wh-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: .78rem; margin-top: auto; }
+  .wh-foot .btn-sm { padding: 8px 16px; font-size: .82rem; }
+  .b-off { background: rgba(255, 255, 255, .07); color: var(--muted); }
+  .warn-line { color: var(--danger); font-size: .78rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="get" class="card filters" role="search">
+  <div class="f grow">
+    <label class="t" for="f-q">جستجو</label>
+    <input type="search" id="f-q" name="q" value="{{ filters.q }}" placeholder="نام یا آدرس انبار...">
+  </div>
+  <div class="f">
+    <label class="t" for="f-st">وضعیت</label>
+    <select id="f-st" name="status">
+      <option value="">همه</option>
+      <option value="active"   {% if filters.status == 'active' %}selected{% endif %}>فقط فعال</option>
+      <option value="inactive" {% if filters.status == 'inactive' %}selected{% endif %}>فقط غیرفعال</option>
+    </select>
+  </div>
+  <div class="btns">
+    <button type="submit" class="btn-sm">اعمال فیلتر</button>
+    {% if request.user|has_role:"admin" %}<a href="{% url 'application:warehouse_settings' %}" class="btn-sm ghost">+ افزودن / مدیریت انبار</a>{% endif %}
+    {% if has_filters %}<a href="{% url 'application:warehouse_list' %}" class="btn-sm ghost">پاک کردن</a>{% endif %}
+  </div>
+</form>
+
+<section class="stats">
+  <div class="card stat"><span>تعداد انبار</span><b>{{ summary.count }}</b><small>{{ summary.active }} انبار فعال</small></div>
+  <div class="card stat"><span>مجموع موجودی انبارها</span><b>{{ summary.stock }}</b><small>ورود منهای خروج</small></div>
+  <div class="card stat"><span>تعداد تراکنش</span><b>{{ summary.tx }}</b><small>در انبارهای نمایش‌داده‌شده</small></div>
+</section>
+
+{% if warehouses %}
+<section class="wh-grid">
+  {% for w in warehouses %}
+    <article class="card wh {% if not w.is_active %}off{% endif %}">
+      <div class="wh-top">
+        <div>
+          <h2><a href="{% url 'application:warehouse_detail' w.pk %}">{{ w.name }}</a></h2>
+          <p class="wh-addr">{{ w.address|default:"آدرس ثبت نشده" }}</p>
+        </div>
+        {% if w.is_active %}<span class="badge b-ok">فعال</span>{% else %}<span class="badge b-off">غیرفعال</span>{% endif %}
+      </div>
+      <div class="wh-nums">
+        <div><span>موجودی</span><b class="{% if w.net < 0 %}neg{% endif %}">{{ w.net }}</b></div>
+        <div><span>رنگ/سایز</span><b>{{ w.variants_n }}</b></div>
+        <div><span>تراکنش</span><b>{{ w.tx_n }}</b></div>
+      </div>
+      {% if w.net < 0 %}<p class="warn-line">موجودی منفی است؛ خروج بیش از ورود ثبت شده.</p>{% endif %}
+      <div class="wh-foot">
+        <span>{% if w.last_at %}آخرین تراکنش: {{ w.last_at|jdatetime }}{% else %}هنوز تراکنشی ندارد{% endif %}</span>
+        <a href="{% url 'application:warehouse_detail' w.pk %}" class="btn-sm">مشاهده</a>
+      </div>
+    </article>
+  {% endfor %}
+</section>
+{% else %}
+<section class="card panel"><p class="empty">
+  {% if has_filters %}انباری با این فیلترها پیدا نشد.{% else %}هنوز انباری ثبت نشده است. از پنل مدیریت یک انبار اضافه کنید.{% endif %}
+</p></section>
+{% endif %}
+{% endblock %}
