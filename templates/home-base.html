@@ -187,21 +187,34 @@
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
         داشبورد
       </a>
+      
       <a href="{% url 'application:product_list' %}">
         <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3.3 7.5L12 12.5l8.7-5"/></svg>
         کالاها
       </a>
       <a href="{% url 'application:product_create' %}" class="{% if request.resolver_match.url_name == 'product_create' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M12 22V12.5"/><path d="M3.3 7.5L12 12.5l8.7-5"/></svg>
-        افزودن کالا
+        افزودن کالا 
       </a>
-      <a href="{% url 'application:stock_in' %}">
+      <a href="{% url 'application:invoice_in' %}">
         <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
         ورود به انبار
       </a>
-      <a href="{% url 'application:stock_out' %}">
+      <a href="{% url 'application:invoice_out' %}">
         <svg viewBox="0 0 24 24"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 4h16"/></svg>
         خروج از انبار
+      </a>
+      <a href="{% url 'application:stock_in' %}">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+        ورود به انبار تکی
+      </a>
+      <a href="{% url 'application:stock_out' %}">
+        <svg viewBox="0 0 24 24"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 4h16"/></svg>
+        خروج از انبار تکی
+      </a>
+      <a href="{% url 'application:category_list' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        دسته بندی ها
       </a>
       <a href="{% url 'application:warehouse_list' %}">
         <svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>

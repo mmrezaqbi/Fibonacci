@@ -1,0 +1,189 @@
+{% extends "home-base.html" %}
+
+{% block title %}دسته‌بندی‌ها | سامانه انبارداری{% endblock %}
+{% block page_title %}مدیریت دسته‌بندی‌ها{% endblock %}
+{% block page_subtitle %}{{ categories|length }} دسته‌بندی — {{ total_products }} کالا{% endblock %}
+
+{% block extra_css %}
+<style>
+  [hidden] { display: none !important; }
+  .add-card { padding: 20px; margin-bottom: 16px; }
+  .add-card h2 { font-size: 1.02rem; margin-bottom: 14px; }
+  .add-row { display: flex; gap: 12px; align-items: flex-start; }
+  .add-row .fld { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .add-row input {
+    width: 100%; background: var(--input); border: 1px solid var(--border); border-radius: 14px; color: var(--text);
+    font: inherit; padding: 12px 14px; outline: none; transition: border-color .2s, box-shadow .2s;
+  }
+  .add-row input::placeholder { color: #565e72; }
+  .add-row input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(108, 140, 255, .16); }
+  .err { color: var(--danger); font-size: .8rem; }
+
+  .btn {
+    border: 0; cursor: pointer; font: inherit; font-weight: 600; font-size: .92rem; color: #fff; min-height: 46px;
+    padding: 12px 26px; border-radius: 14px; white-space: nowrap;
+    background: linear-gradient(135deg, var(--primary), var(--primary-2)); box-shadow: 0 10px 28px rgba(108, 140, 255, .3);
+    transition: transform .15s, box-shadow .2s;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 14px 34px rgba(108, 140, 255, .42); }
+  .btn-sm {
+    border: 1px solid var(--border); cursor: pointer; font: inherit; font-size: .84rem; font-weight: 500; min-height: 38px;
+    padding: 8px 16px; border-radius: 10px; background: transparent; color: var(--muted);
+    display: inline-flex; align-items: center; justify-content: center; transition: color .2s, border-color .2s, background .2s;
+  }
+  .btn-sm:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
+  .btn-sm.danger { color: var(--danger); border-color: rgba(255, 107, 122, .35); }
+  .btn-sm.danger:hover { background: rgba(255, 107, 122, .1); border-color: var(--danger); }
+  .btn-sm.fill-danger { background: var(--danger); color: #1a0508; border-color: var(--danger); font-weight: 700; }
+  .btn-sm.fill-danger:hover { filter: brightness(1.1); }
+
+  .panel { padding: 8px 20px 12px; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) 130px 190px; gap: 12px; align-items: center; padding: 14px 0; border-top: 1px solid var(--border); }
+  .row:first-child { border-top: 0; }
+  .c-name b { font-size: .97rem; overflow-wrap: anywhere; }
+  .pill { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: .78rem; background: rgba(108, 140, 255, .14); color: var(--primary); }
+  .pill.zero { background: rgba(255, 255, 255, .06); color: var(--muted); }
+  .c-act { display: flex; gap: 8px; justify-content: flex-end; }
+  .note { color: var(--muted); font-size: .82rem; padding: 10px 0 6px; }
+  .empty { text-align: center; color: var(--muted); padding: 44px 10px; font-size: .92rem; }
+
+  dialog {
+    background: var(--panel-solid); color: var(--text); border: 1px solid rgba(255, 255, 255, .14); border-radius: 18px;
+    padding: 22px; width: min(440px, calc(100vw - 32px)); box-shadow: 0 30px 80px rgba(0, 0, 0, .6);
+    margin: auto;
+  }
+  dialog::backdrop { background: rgba(0, 0, 0, .6); }
+  dialog h3 { font-size: 1.05rem; margin-bottom: 10px; }
+  dialog p { color: var(--muted); font-size: .88rem; line-height: 1.9; }
+  dialog .fld { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+  dialog label { font-size: .82rem; color: var(--muted); }
+  dialog select {
+    width: 100%; background: var(--input); border: 1px solid var(--border); border-radius: 12px; color: var(--text);
+    font: inherit; padding: 11px 12px; outline: none; color-scheme: dark;
+  }
+  dialog select option { background: var(--panel-solid); }
+  dialog .acts { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .warn-line { color: var(--warning); }
+
+  @media (max-width: 700px) {
+    .add-card { padding: 16px; }
+    .add-row { flex-direction: column; }
+    .add-row input { font-size: 16px; min-height: 46px; }
+    .add-row .btn { width: 100%; }
+    .panel { padding: 4px 14px 8px; }
+    .row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name count" "act act"; row-gap: 10px; }
+    .c-name { grid-area: name; } .c-count { grid-area: count; } .c-act { grid-area: act; justify-content: stretch; }
+    .c-act .btn-sm { flex: 1; min-height: 42px; }
+    dialog select { font-size: 16px; }
+    dialog .acts .btn-sm { flex: 1; min-height: 44px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="card add-card" novalidate>
+  {% csrf_token %}
+  <h2>افزودن دسته‌بندی جدید</h2>
+  <div class="add-row">
+    <div class="fld">
+      {{ form.name }}
+      {% for e in form.name.errors %}<small class="err">{{ e }}</small>{% endfor %}
+      {% for e in form.non_field_errors %}<small class="err">{{ e }}</small>{% endfor %}
+    </div>
+    <button type="submit" class="btn">افزودن</button>
+  </div>
+</form>
+
+<section class="card panel">
+  {% for c in categories %}
+    <div class="row">
+      <div class="c-name"><b>{{ c.name }}</b></div>
+      <div class="c-count"><span class="pill{% if not c.product_count %} zero{% endif %}">{{ c.product_count }} کالا</span></div>
+      <div class="c-act">
+        <a href="{% url 'application:category_edit' c.pk %}" class="btn-sm">ویرایش</a>
+        <button type="button" class="btn-sm danger js-delete"
+                data-url="{% url 'application:category_delete' c.pk %}"
+                data-id="{{ c.pk }}" data-name="{{ c.name }}" data-count="{{ c.product_count }}">حذف</button>
+      </div>
+    </div>
+  {% empty %}
+    <p class="empty">هنوز دسته‌بندی‌ای ثبت نشده است. اولین دسته‌بندی را از کادر بالا اضافه کنید.</p>
+  {% endfor %}
+  {% if uncategorized %}
+    <p class="note">{{ uncategorized }} کالا بدون دسته‌بندی است.</p>
+  {% endif %}
+</section>
+
+<dialog id="delDlg" aria-labelledby="delTitle">
+  <form method="post" id="delForm">
+    {% csrf_token %}
+    <h3 id="delTitle">حذف دسته‌بندی</h3>
+    <p id="delText"></p>
+    <div class="fld" id="moveBox" hidden>
+      <label for="moveSel">کالاهای این دسته‌بندی به کدام دسته‌بندی منتقل شوند؟</label>
+      <select name="move_to" id="moveSel">
+        {% for c in categories %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="acts">
+      <button type="button" class="btn-sm" id="delCancel">انصراف</button>
+      <button type="submit" class="btn-sm fill-danger" id="delOk">حذف</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var dlg = document.getElementById('delDlg');
+    var form = document.getElementById('delForm');
+    var text = document.getElementById('delText');
+    var moveBox = document.getElementById('moveBox');
+    var sel = document.getElementById('moveSel');
+    var ok = document.getElementById('delOk');
+
+    function openDlg() {
+      if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+    }
+    function closeDlg() {
+      if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
+    }
+
+    document.querySelectorAll('.js-delete').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var name = btn.getAttribute('data-name');
+        var count = parseInt(btn.getAttribute('data-count'), 10) || 0;
+        var id = btn.getAttribute('data-id');
+        form.setAttribute('action', btn.getAttribute('data-url'));
+        text.className = '';
+        ok.disabled = false;
+
+        if (count === 0) {
+          text.textContent = 'دسته‌بندی «' + name + '» حذف شود؟ این کار قابل بازگشت نیست.';
+          moveBox.hidden = true; sel.disabled = true;
+        } else {
+          // خود دسته‌بندی از گزینه‌های مقصد حذف می‌شود
+          var options = 0;
+          for (var i = 0; i < sel.options.length; i++) {
+            var same = sel.options[i].value === id;
+            sel.options[i].hidden = same; sel.options[i].disabled = same;
+            if (!same) { options++; if (options === 1) sel.value = sel.options[i].value; }
+          }
+          if (options === 0) {
+            text.textContent = 'دسته‌بندی «' + name + '» ' + count + ' کالا دارد و دسته‌بندی دیگری برای انتقال آن‌ها وجود ندارد. ابتدا یک دسته‌بندی جدید بسازید.';
+            text.className = 'warn-line';
+            moveBox.hidden = true; sel.disabled = true; ok.disabled = true;
+          } else {
+            text.textContent = 'دسته‌بندی «' + name + '» ' + count + ' کالا دارد. کالاها به دسته‌بندی انتخاب‌شده منتقل و سپس این دسته‌بندی حذف می‌شود.';
+            moveBox.hidden = false; sel.disabled = false;
+          }
+        }
+        openDlg();
+      });
+    });
+    document.getElementById('delCancel').addEventListener('click', closeDlg);
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) closeDlg(); });
+  })();
+</script>
+{% endblock %}

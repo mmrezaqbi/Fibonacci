@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import reports, settings_pages, views, warehouses, woo_pages
+from . import reports, settings_pages, views, warehouses, woo_pages , invoice , categories
 
 app_name = "application"
 
@@ -14,6 +14,13 @@ urlpatterns = [
     path("stock/out/", views.stock_out, name="stock_out"),
     path("warehouses/", warehouses.warehouse_list, name="warehouse_list"),
     path("warehouses/<int:pk>/", warehouses.warehouse_detail, name="warehouse_detail"),
+    path("stock/out/invoice/", invoice.invoice_page, {"movement": "out"}, name="invoice_out"),
+    path("stock/in/invoice/", invoice.invoice_page, {"movement": "in"}, name="invoice_in"),
+    path("api/variants/search/", invoice.variant_search, name="api_variant_search"),
+    path("api/invoice/submit/", invoice.invoice_submit, name="api_invoice_submit"),
+    path("categories/", categories.category_list, name="category_list"),
+    path("categories/<int:pk>/edit/", categories.category_edit, name="category_edit"),
+    path("categories/<int:pk>/delete/", categories.category_delete, name="category_delete"),
     path("reports/", reports.reports_index, name="reports"),
     path("reports/transactions/", reports.report_transactions, name="report_transactions"),
     path("reports/stock/", reports.report_stock, name="report_stock"),

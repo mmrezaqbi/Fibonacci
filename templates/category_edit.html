@@ -1,0 +1,59 @@
+{% extends "home-base.html" %}
+
+{% block title %}ویرایش دسته‌بندی | سامانه انبارداری{% endblock %}
+{% block page_title %}ویرایش دسته‌بندی{% endblock %}
+{% block page_subtitle %}{{ category.name }} — {{ product_count }} کالا{% endblock %}
+
+{% block extra_css %}
+<style>
+  .back { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: .88rem; margin-bottom: 16px; transition: color .2s; }
+  .back:hover { color: var(--text); }
+  .back svg { width: 16px; height: 16px; }
+  .form-card { padding: 24px; max-width: 560px; }
+  .fld { display: flex; flex-direction: column; gap: 7px; margin-bottom: 20px; }
+  .fld label { font-size: .85rem; color: var(--muted); }
+  .fld input {
+    width: 100%; background: var(--input); border: 1px solid var(--border); border-radius: 14px; color: var(--text);
+    font: inherit; padding: 12px 14px; outline: none; transition: border-color .2s, box-shadow .2s;
+  }
+  .fld input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(108, 140, 255, .16); }
+  .err { color: var(--danger); font-size: .8rem; }
+  .actions-bar { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    border: 0; cursor: pointer; font: inherit; font-weight: 600; font-size: .95rem; color: #fff; min-height: 46px;
+    padding: 12px 30px; border-radius: 14px; background: linear-gradient(135deg, var(--primary), var(--primary-2));
+    box-shadow: 0 10px 28px rgba(108, 140, 255, .3);
+  }
+  .btn-ghost {
+    display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 12px 24px; border-radius: 14px;
+    font-size: .95rem; color: var(--muted); border: 1px solid var(--border); transition: color .2s, border-color .2s;
+  }
+  .btn-ghost:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
+  @media (max-width: 700px) {
+    .form-card { padding: 18px 16px; }
+    .fld input { font-size: 16px; min-height: 46px; }
+    .actions-bar .btn, .actions-bar .btn-ghost { flex: 1 1 140px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="{% url 'application:category_list' %}" class="back">
+  <svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+  بازگشت به دسته‌بندی‌ها
+</a>
+
+<form method="post" class="card form-card" novalidate>
+  {% csrf_token %}
+  <div class="fld">
+    <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+    {{ form.name }}
+    {% for e in form.name.errors %}<small class="err">{{ e }}</small>{% endfor %}
+    {% for e in form.non_field_errors %}<small class="err">{{ e }}</small>{% endfor %}
+  </div>
+  <div class="actions-bar">
+    <button type="submit" class="btn">ذخیره‌ی تغییرات</button>
+    <a href="{% url 'application:category_list' %}" class="btn-ghost">انصراف</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,676 @@
+{% extends "home-base.html" %}
+
+{% block title %}{% if is_out %}فاکتور خروج{% else %}فاکتور ورود{% endif %} | سامانه انبارداری{% endblock %}
+{% block page_title %}{% if is_out %}فاکتور خروج از انبار{% else %}فاکتور ورود به انبار{% endif %}{% endblock %}
+{% block page_subtitle %}کالاها را با بارکدخوان، کد کالا یا نام جستجو کنید و همه را یک‌جا ثبت کنید{% endblock %}
+
+{% block extra_css %}
+<style>
+  .invoice { --accent: var(--primary); }
+  .invoice.mode-out { --accent: var(--warning); }
+  .invoice.mode-in  { --accent: var(--success); }
+  [hidden] { display: none !important; }
+
+  .inv-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+  .inv-main { display: grid; gap: 16px; min-width: 0; }
+
+  /* ---------- search ---------- */
+  .search-card { padding: 18px; position: relative; z-index: 5; border-top: 3px solid var(--accent); }
+  .search-card label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 8px; }
+  .search-box { position: relative; }
+  .search-box > svg { position: absolute; top: 50%; right: 14px; transform: translateY(-50%); width: 20px; height: 20px; color: var(--muted); pointer-events: none; }
+  .search-box input {
+    width: 100%; background: var(--input); border: 1px solid var(--border); border-radius: 14px;
+    color: var(--text); font: inherit; font-size: 1.02rem; padding: 14px 46px 14px 44px; outline: none;
+    transition: border-color .2s, box-shadow .2s; color-scheme: dark;
+  }
+  .search-box input::placeholder { color: #565e72; font-size: .9rem; }
+  .search-box input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(108, 140, 255, .16); }
+  .clear-q {
+    position: absolute; top: 50%; left: 8px; transform: translateY(-50%); width: 34px; height: 34px; border: 0;
+    border-radius: 10px; background: transparent; color: var(--muted); font-size: 1.3rem; cursor: pointer;
+  }
+  .clear-q:hover { color: var(--text); background: rgba(255, 255, 255, .06); }
+  .hint { color: #6a7389; font-size: .78rem; margin-top: 10px; line-height: 1.8; }
+  .status { margin-top: 10px; font-size: .86rem; min-height: 1.3em; line-height: 1.7; }
+  .status.ok { color: var(--success); } .status.warn { color: var(--warning); } .status.error { color: var(--danger); }
+
+  .results {
+    position: absolute; top: calc(100% + 6px); right: 0; left: 0; z-index: 20; max-height: 360px; overflow-y: auto;
+    background: var(--panel-solid); border: 1px solid rgba(255, 255, 255, .14); border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .55); padding: 6px; -webkit-overflow-scrolling: touch;
+  }
+  .res {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center;
+    padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  }
+  .res.active, .res:hover { background: rgba(108, 140, 255, .14); }
+  .res.disabled { opacity: .5; }
+  .res b { font-size: .92rem; overflow-wrap: anywhere; }
+  .res .sub { color: var(--muted); font-size: .78rem; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+  .res .stk { font-size: .78rem; padding: 3px 10px; border-radius: 999px; white-space: nowrap; background: rgba(61, 220, 151, .13); color: var(--success); }
+  .res .stk.low { background: rgba(245, 184, 75, .14); color: var(--warning); }
+  .res .stk.zero { background: rgba(255, 107, 122, .12); color: var(--danger); }
+  .res-empty { padding: 16px; text-align: center; color: var(--muted); font-size: .86rem; }
+  .swatch { display: inline-block; width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); vertical-align: middle; margin-left: 6px; flex-shrink: 0; }
+  .ltr { direction: ltr; unicode-bidi: embed; }
+
+  /* ---------- lines ---------- */
+  .lines-card { padding: 16px 16px 8px; min-width: 0; }
+  .lines-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .lines-head h2 { font-size: 1.02rem; }
+  .count-badge { font-size: .76rem; padding: 3px 11px; border-radius: 999px; background: rgba(108, 140, 255, .15); color: var(--primary); }
+  .link-btn { margin-right: auto; background: none; border: 0; color: var(--muted); font: inherit; font-size: .82rem; cursor: pointer; padding: 6px 8px; border-radius: 8px; }
+  .link-btn:hover { color: var(--danger); background: rgba(255, 107, 122, .08); }
+
+  .line-cols, .line { display: grid; grid-template-columns: 34px minmax(0, 1fr) 76px 156px 38px; gap: 10px; align-items: center; }
+  .line-cols { color: var(--muted); font-size: .74rem; padding: 0 6px 8px; }
+  .line { padding: 11px 6px; border-top: 1px solid var(--border); border-radius: 0; transition: background .3s; }
+  .line.flash { animation: flash .7s ease; }
+  @keyframes flash { from { background: rgba(108, 140, 255, .28); } to { background: transparent; } }
+  .line.bad { background: rgba(255, 107, 122, .07); }
+  .l-idx { color: var(--muted); font-size: .8rem; text-align: center; }
+  .l-info { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .l-info b { font-size: .92rem; overflow-wrap: anywhere; }
+  .l-info .sub { color: var(--muted); font-size: .78rem; display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: center; }
+  .l-stock { font-size: .82rem; color: var(--muted); text-align: center; }
+  .l-stock b { display: block; color: var(--text); font-size: .95rem; }
+  .l-qty { display: flex; align-items: center; gap: 6px; }
+  .qbtn {
+    width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border); background: var(--input);
+    color: var(--text); font-size: 1.2rem; line-height: 1; cursor: pointer; flex-shrink: 0; transition: border-color .2s, background .2s;
+  }
+  .qbtn:hover { border-color: var(--accent); background: rgba(255, 255, 255, .05); }
+  .l-qty input {
+    width: 64px; height: 38px; text-align: center; background: var(--input); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font: inherit; font-size: 1rem; font-weight: 700; outline: none; -moz-appearance: textfield;
+  }
+  .l-qty input::-webkit-outer-spin-button, .l-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .l-qty input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108, 140, 255, .16); }
+  .line.bad .l-qty input { border-color: var(--danger); }
+  .l-del { width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-size: 1.3rem; cursor: pointer; }
+  .l-del:hover { color: var(--danger); background: rgba(255, 107, 122, .1); }
+  .l-err { grid-column: 1 / -1; color: var(--danger); font-size: .8rem; padding: 0 4px; }
+  .lines-empty { text-align: center; color: var(--muted); padding: 38px 10px 30px; font-size: .9rem; line-height: 2; }
+  .lines-empty svg { width: 44px; height: 44px; stroke-width: 1.2; color: #3b4359; display: block; margin: 0 auto 8px; }
+
+  /* ---------- side summary ---------- */
+  .inv-side { padding: 18px; position: sticky; top: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .inv-side h2 { font-size: 1.02rem; }
+  .fld { display: flex; flex-direction: column; gap: 6px; }
+  .fld label { font-size: .82rem; color: var(--muted); }
+  .fld select, .fld textarea {
+    width: 100%; background: var(--input); border: 1px solid var(--border); border-radius: 12px; color: var(--text);
+    font: inherit; font-size: .92rem; padding: 11px 12px; outline: none; color-scheme: dark; transition: border-color .2s, box-shadow .2s;
+  }
+  .fld textarea { resize: vertical; min-height: 70px; }
+  .fld select option { background: var(--panel-solid); }
+  .fld select:focus, .fld textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108, 140, 255, .16); }
+  .totals { display: grid; gap: 8px; padding: 14px; border-radius: 12px; background: rgba(255, 255, 255, .03); border: 1px solid var(--border); }
+  .totals div { display: flex; justify-content: space-between; font-size: .88rem; color: var(--muted); }
+  .totals b { color: var(--text); font-size: 1.05rem; }
+  .totals .grand b { color: var(--accent); font-size: 1.3rem; }
+  .btn-submit {
+    border: 0; cursor: pointer; font: inherit; font-weight: 700; font-size: 1rem; color: #fff; min-height: 50px;
+    padding: 13px 20px; border-radius: 14px; width: 100%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-2)); box-shadow: 0 10px 28px rgba(108, 140, 255, .3);
+    transition: transform .15s, box-shadow .2s, opacity .2s;
+  }
+  .btn-submit:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 34px rgba(108, 140, 255, .42); }
+  .btn-submit:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+  .sound { display: flex; align-items: center; gap: 8px; font-size: .82rem; color: var(--muted); cursor: pointer; }
+  .sound input { width: 17px; height: 17px; accent-color: var(--primary); }
+
+  .mobile-bar {
+    display: none; position: fixed; right: 0; left: 0; bottom: 0; z-index: 25; gap: 12px; align-items: center;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: var(--panel-solid);
+    border-top: 1px solid var(--border); box-shadow: 0 -12px 30px rgba(0, 0, 0, .4);
+  }
+  .mobile-bar .tot { flex: 1; min-width: 0; font-size: .82rem; color: var(--muted); line-height: 1.6; }
+  .mobile-bar .tot b { color: var(--text); }
+  .mobile-bar .btn-submit { width: auto; min-width: 140px; padding: 12px 22px; }
+
+  /* ---------- done ---------- */
+  .done { padding: 28px 22px; text-align: center; border-top: 3px solid var(--success); }
+  .done h2 { color: var(--success); font-size: 1.15rem; margin-bottom: 8px; }
+  .done p { color: var(--muted); font-size: .9rem; line-height: 2; }
+  .done .code { display: inline-block; margin: 8px 0 14px; padding: 6px 16px; border-radius: 10px; background: rgba(255, 255, 255, .05); font-weight: 700; letter-spacing: .5px; color: var(--text); }
+  .done .acts { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+  .btn-sm {
+    border: 0; cursor: pointer; font: inherit; font-size: .9rem; font-weight: 600; color: #fff; min-height: 44px;
+    padding: 10px 22px; border-radius: 12px; background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  }
+  .btn-sm.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); font-weight: 500; }
+  .btn-sm.ghost:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
+
+  .print-sheet { display: none; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1100px) {
+    .inv-grid { grid-template-columns: 1fr; }
+    .inv-side { position: static; }
+    .mobile-bar { display: flex; }
+    .invoice { padding-bottom: 84px; }
+  }
+  @media (max-width: 700px) {
+    .search-card { padding: 14px; }
+    .search-box input { font-size: 16px; padding: 14px 44px 14px 42px; }
+    .lines-card { padding: 12px 12px 4px; }
+    .line-cols { display: none; }
+    .line {
+      grid-template-columns: 26px minmax(0, 1fr) 38px;
+      grid-template-areas: "idx info del" "stock qty qty";
+      row-gap: 10px; padding: 12px 2px;
+    }
+    .l-idx { grid-area: idx; align-self: start; padding-top: 3px; }
+    .l-info { grid-area: info; }
+    .l-del { grid-area: del; align-self: start; }
+    .l-stock { grid-area: stock; text-align: right; display: flex; align-items: baseline; gap: 6px; }
+    .l-stock b { display: inline; }
+    .l-qty { grid-area: qty; justify-content: flex-end; }
+    .l-qty input { font-size: 16px; }
+    .l-err { grid-column: 1 / -1; }
+    .res { padding: 12px 10px; }
+    .results { max-height: 52vh; }
+    .inv-side { padding: 14px; }
+    .fld select, .fld textarea { font-size: 16px; }
+    .mobile-bar .btn-submit { min-width: 120px; }
+  }
+
+  /* ---------- print ---------- */
+  @media print {
+    @page { margin: 12mm; }
+    body { background: #fff !important; color: #000 !important; }
+    body::before, body::after { display: none !important; }
+    .sidebar, .overlay, .topbar, .messages, .no-print { display: none !important; }
+    .main { margin: 0 !important; padding: 0 !important; }
+    .print-sheet { display: block !important; color: #000; font-size: 12px; }
+    .print-sheet h1 { font-size: 18px; margin-bottom: 6px; }
+    .print-sheet .meta { display: flex; flex-wrap: wrap; gap: 4px 24px; margin-bottom: 12px; color: #333; }
+    .print-sheet table { width: 100%; border-collapse: collapse; }
+    .print-sheet th, .print-sheet td { border: 1px solid #999; padding: 6px 8px; text-align: right; }
+    .print-sheet th { background: #eee; }
+    .print-sheet .sum { margin-top: 10px; font-weight: 700; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="invoice" class="invoice mode-{{ movement }}"
+     data-movement="{{ movement }}"
+     data-search-url="{% url 'application:api_variant_search' %}"
+     data-submit-url="{% url 'application:api_invoice_submit' %}"
+     data-default-wh="{{ default_warehouse }}">
+  {% csrf_token %}
+
+  <div class="no-print">
+    <div class="inv-grid" id="invGrid">
+      <section class="inv-main">
+
+        <div class="card search-card">
+          <label for="q">جستجوی کالا (بارکد، کد کالا، نام، برند، رنگ یا سایز)</label>
+          <div class="search-box">
+            <svg viewBox="0 0 24 24"><path d="M4 5v14M8 5v14M12 5v14M16 5v14M20 5v14"/></svg>
+            <input type="text" id="q" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus
+                   placeholder="بارکد را اسکن کنید یا چند حرف از نام / کد کالا را بنویسید..."
+                   aria-controls="results" aria-autocomplete="list">
+            <button type="button" class="clear-q" id="clearQ" aria-label="پاک کردن" hidden>×</button>
+            <div class="results" id="results" role="listbox" hidden></div>
+          </div>
+          <p class="hint">
+            بارکدخوان مثل کیبورد کار می‌کند: با هر اسکن کالا به فاکتور اضافه می‌شود و اسکن دوباره‌ی همان کالا یک عدد به تعداد می‌افزاید.
+            برای انتخاب از لیست از کلیدهای ↑ ↓ و Enter استفاده کنید.
+          </p>
+          <p class="status" id="status" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="card lines-card">
+          <div class="lines-head">
+            <h2>اقلام فاکتور</h2>
+            <span class="count-badge" id="countBadge">۰ قلم</span>
+            <button type="button" class="link-btn" id="clearAll" hidden>پاک کردن همه</button>
+          </div>
+          <div class="line-cols" aria-hidden="true">
+            <span>#</span><span>کالا</span><span style="text-align:center">موجودی</span><span>تعداد</span><span></span>
+          </div>
+          <div id="lines"></div>
+          <div class="lines-empty" id="linesEmpty">
+            <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3.3 7.5L12 12.5l8.7-5"/><path d="M12 22V12.5"/></svg>
+            هنوز کالایی اضافه نشده است.<br>اولین بارکد را اسکن کنید یا نام کالا را جستجو کنید.
+          </div>
+        </div>
+      </section>
+
+      <aside class="card inv-side">
+        <h2>{% if is_out %}مشخصات خروج{% else %}مشخصات ورود{% endif %}</h2>
+        <div class="fld">
+          <label for="warehouse">انبار <span style="color: var(--danger)">*</span></label>
+          <select id="warehouse">
+            <option value="">انتخاب انبار...</option>
+            {% for w in warehouses %}<option value="{{ w.pk }}">{{ w.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="fld">
+          <label for="note">توضیحات (اختیاری)</label>
+          <textarea id="note" rows="3" placeholder="{% if is_out %}مثلاً: فروش به مشتری، ارسال به فروشگاه...{% else %}مثلاً: خرید از تأمین‌کننده...{% endif %}"></textarea>
+        </div>
+        <div class="totals">
+          <div><span>تعداد اقلام</span><b id="tLines">0</b></div>
+          <div class="grand"><span>جمع تعداد</span><b id="tQty">0</b></div>
+        </div>
+        <button type="button" class="btn-submit" id="submitBtn" disabled>
+          {% if is_out %}ثبت خروج از انبار{% else %}ثبت ورود به انبار{% endif %}
+        </button>
+        <label class="sound"><input type="checkbox" id="sound" checked> صدای بوق هنگام اسکن</label>
+      </aside>
+    </div>
+
+    <div class="mobile-bar" id="mobileBar">
+      <div class="tot"><b id="mLines">0</b> قلم — <b id="mQty">0</b> عدد</div>
+      <button type="button" class="btn-submit" id="mSubmit" disabled>{% if is_out %}ثبت خروج{% else %}ثبت ورود{% endif %}</button>
+    </div>
+
+    <div class="card done" id="done" hidden>
+      <h2>✔ {% if is_out %}خروج{% else %}ورود{% endif %} با موفقیت ثبت شد</h2>
+      <span class="code ltr" id="doneCode"></span>
+      <p id="doneInfo"></p>
+      <div class="acts">
+        <button type="button" class="btn-sm" id="newInv">فاکتور جدید</button>
+        <button type="button" class="btn-sm ghost" id="printBtn">چاپ فاکتور</button>
+        <a class="btn-sm ghost" href="{% url 'application:report_transactions' %}" style="display:inline-flex;align-items:center">گزارش تراکنش‌ها</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="print-sheet" id="printSheet"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  'use strict';
+
+  var root = document.getElementById('invoice');
+  var IS_OUT = root.getAttribute('data-movement') === 'out';
+  var MOVE = IS_OUT ? 'out' : 'in';
+  var SEARCH_URL = root.getAttribute('data-search-url');
+  var SUBMIT_URL = root.getAttribute('data-submit-url');
+  var csrf = root.querySelector('input[name=csrfmiddlewaretoken]').value;
+
+  function $(id) { return document.getElementById(id); }
+  var input = $('q'), results = $('results'), statusEl = $('status'), clearQ = $('clearQ');
+  var linesEl = $('lines'), emptyEl = $('linesEmpty'), countBadge = $('countBadge'), clearAll = $('clearAll');
+  var whSel = $('warehouse'), noteEl = $('note'), soundEl = $('sound');
+  var submitBtn = $('submitBtn'), mSubmit = $('mSubmit');
+  var doneBox = $('done'), invGrid = $('invGrid'), mobileBar = $('mobileBar');
+
+  var lines = [];          // {id, product, color, hex, size, sku, barcode, stock, qty, error}
+  var items = [], active = -1;
+  var timer = null, ctrl = null, busy = false;
+
+  /* ---------- helpers ---------- */
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = text;
+    return e;
+  }
+  function normalize(s) {
+    return String(s || '')
+      .replace(/[\u06F0-\u06F9]/g, function (d) { return d.charCodeAt(0) - 1776; })
+      .replace(/[\u0660-\u0669]/g, function (d) { return d.charCodeAt(0) - 1632; })
+      .trim();
+  }
+  function setStatus(msg, type) {
+    statusEl.textContent = msg || '';
+    statusEl.className = 'status' + (type ? ' ' + type : '');
+  }
+  var AC = null;
+  function beep(ok) {
+    if (!soundEl.checked) return;
+    try {
+      AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+      var o = AC.createOscillator(), g = AC.createGain();
+      o.type = 'sine'; o.frequency.value = ok ? 880 : 220; g.gain.value = 0.06;
+      o.connect(g); g.connect(AC.destination);
+      o.start(); o.stop(AC.currentTime + (ok ? 0.08 : 0.28));
+    } catch (e) { /* بدون صدا */ }
+  }
+  function find(id) {
+    for (var i = 0; i < lines.length; i++) if (lines[i].id === id) return lines[i];
+    return null;
+  }
+  function stockClass(v) {
+    if (v.stock <= 0) return 'zero';
+    if (v.stock <= v.min_stock) return 'low';
+    return '';
+  }
+  function swatch(hex) {
+    var s = el('span', 'swatch'); s.style.background = hex || 'transparent'; return s;
+  }
+
+  /* ---------- search dropdown ---------- */
+  function hideResults() { results.hidden = true; results.textContent = ''; items = []; active = -1; }
+
+  function renderResults(list) {
+    results.textContent = '';
+    items = list; active = list.length ? 0 : -1;
+    if (!list.length) {
+      results.appendChild(el('div', 'res-empty', 'کالایی پیدا نشد.'));
+      results.hidden = false;
+      return;
+    }
+    list.forEach(function (v, i) {
+      var row = el('div', 'res' + (IS_OUT && v.stock <= 0 ? ' disabled' : '') + (i === 0 ? ' active' : ''));
+      row.setAttribute('role', 'option');
+      var left = el('div');
+      left.appendChild(el('b', null, v.product));
+      var sub = el('div', 'sub');
+      var c = el('span'); c.appendChild(swatch(v.hex)); c.appendChild(document.createTextNode(v.color + ' / ' + v.size));
+      sub.appendChild(c);
+      var sku = el('span', 'ltr', v.sku); sub.appendChild(sku);
+      if (v.barcode) { var bc = el('span', 'ltr', '▮ ' + v.barcode); sub.appendChild(bc); }
+      left.appendChild(sub);
+      row.appendChild(left);
+      row.appendChild(el('span', 'stk ' + stockClass(v), v.stock > 0 ? 'موجودی: ' + v.stock : 'ناموجود'));
+      row.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      row.addEventListener('click', function () { addItem(v); });
+      row.addEventListener('mouseenter', function () { setActive(i); });
+      results.appendChild(row);
+    });
+    results.hidden = false;
+  }
+  function setActive(i) {
+    var rows = results.querySelectorAll('.res');
+    if (!rows.length) return;
+    active = (i + rows.length) % rows.length;
+    for (var k = 0; k < rows.length; k++) rows[k].classList.toggle('active', k === active);
+    rows[active].scrollIntoView({ block: 'nearest' });
+  }
+
+  function fetchResults(q, exact) {
+    if (ctrl) ctrl.abort();
+    ctrl = new AbortController();
+    var url = SEARCH_URL + '?q=' + encodeURIComponent(q) + (exact ? '&exact=1' : '');
+    return fetch(url, {
+      credentials: 'same-origin', signal: ctrl.signal,
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    }).then(function (r) {
+      if (!r.ok) throw new Error('http ' + r.status);
+      return r.json();
+    }).then(function (d) { return d.results || []; });
+  }
+  function searchError(err) {
+    if (err && err.name === 'AbortError') return;
+    beep(false);
+    setStatus('خطا در ارتباط با سرور؛ دوباره تلاش کنید.', 'error');
+  }
+
+  function onInput() {
+    clearQ.hidden = !input.value;
+    clearTimeout(timer);
+    var q = normalize(input.value);
+    if (q.length < 2) { hideResults(); return; }
+    timer = setTimeout(function () {
+      fetchResults(q, false).then(function (list) {
+        if (normalize(input.value) !== q) return;   // ورودی عوض شده
+        renderResults(list);
+      }).catch(searchError);
+    }, 220);
+  }
+
+  /* Enter = اسکن بارکد (یا انتخاب گزینه‌ی فعال) */
+  function onEnter() {
+    var q = normalize(input.value);
+    if (!q) return;
+    clearTimeout(timer);
+    if (!results.hidden && active >= 0 && items[active]) { addItem(items[active]); return; }
+    fetchResults(q, true).then(function (list) {
+      if (list.length === 1) { addItem(list[0]); return; }
+      if (list.length > 1) { renderResults(list); setStatus('چند کالا با این کد پیدا شد؛ یکی را انتخاب کنید.', 'warn'); return; }
+      return fetchResults(q, false).then(function (list2) {
+        if (list2.length === 1) addItem(list2[0]);
+        else if (list2.length > 1) { renderResults(list2); setStatus('یکی از کالاها را انتخاب کنید.', 'warn'); }
+        else { beep(false); setStatus('کالایی با «' + q + '» پیدا نشد.', 'error'); input.select(); hideResults(); }
+      });
+    }).catch(searchError);
+  }
+
+  function resetInput() { input.value = ''; clearQ.hidden = true; hideResults(); input.focus(); }
+
+  /* ---------- invoice lines ---------- */
+  function addItem(v) {
+    doneBox.hidden = true;
+    var line = find(v.id);
+    if (!line && IS_OUT && v.stock <= 0) {
+      beep(false); setStatus('«' + v.product + '» ناموجود است.', 'error'); resetInput(); return;
+    }
+    if (line) {
+      line.stock = v.stock;
+      if (IS_OUT && line.qty + 1 > line.stock) {
+        beep(false); setStatus('موجودی «' + line.product + '» فقط ' + line.stock + ' عدد است.', 'warn');
+      } else {
+        line.qty += 1; line.error = '';
+        beep(true); setStatus(line.product + ' — تعداد: ' + line.qty, 'ok');
+      }
+    } else {
+      line = { id: v.id, product: v.product, color: v.color, hex: v.hex, size: v.size, sku: v.sku,
+               barcode: v.barcode, stock: v.stock, qty: 1, error: '' };
+      lines.unshift(line);
+      beep(true); setStatus(v.product + ' به فاکتور اضافه شد.', 'ok');
+    }
+    renderLines(line.id);
+    resetInput();
+  }
+
+  function isBad(l) { return !(l.qty >= 1) || (IS_OUT && l.qty > l.stock); }
+
+  function buildLine(l, i) {
+    var row = el('div', 'line' + ((l.error || isBad(l)) ? ' bad' : ''));
+    row.setAttribute('data-id', l.id);
+    row.appendChild(el('div', 'l-idx', String(i + 1)));
+
+    var info = el('div', 'l-info');
+    info.appendChild(el('b', null, l.product));
+    var sub = el('div', 'sub');
+    var c = el('span'); c.appendChild(swatch(l.hex)); c.appendChild(document.createTextNode(l.color + ' / ' + l.size));
+    sub.appendChild(c); sub.appendChild(el('span', 'ltr', l.sku));
+    info.appendChild(sub);
+    row.appendChild(info);
+
+    var stock = el('div', 'l-stock'); stock.appendChild(document.createTextNode('موجودی '));
+    stock.appendChild(el('b', null, String(l.stock)));
+    row.appendChild(stock);
+
+    var q = el('div', 'l-qty');
+    var minus = el('button', 'qbtn', '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'کم کردن');
+    var plus = el('button', 'qbtn', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'زیاد کردن');
+    var inp = el('input'); inp.type = 'number'; inp.min = '1'; inp.value = l.qty; inp.setAttribute('inputmode', 'numeric');
+    inp.setAttribute('aria-label', 'تعداد ' + l.product);
+    if (IS_OUT) inp.max = String(l.stock);
+    minus.addEventListener('click', function () { l.qty = Math.max(1, (parseInt(l.qty, 10) || 1) - 1); l.error = ''; renderLines(); });
+    plus.addEventListener('click', function () {
+      var n = (parseInt(l.qty, 10) || 0) + 1;
+      if (IS_OUT && n > l.stock) { beep(false); setStatus('موجودی «' + l.product + '» فقط ' + l.stock + ' عدد است.', 'warn'); return; }
+      l.qty = n; l.error = ''; renderLines();
+    });
+    inp.addEventListener('input', function () {
+      l.qty = parseInt(normalize(inp.value), 10) || 0; l.error = '';
+      row.classList.toggle('bad', isBad(l));
+      updateTotals();
+    });
+    inp.addEventListener('change', function () {
+      var n = parseInt(normalize(inp.value), 10) || 1;
+      if (IS_OUT && n > l.stock) { n = l.stock; setStatus('تعداد «' + l.product + '» به موجودی (' + l.stock + ') کاهش یافت.', 'warn'); }
+      l.qty = Math.max(1, n); renderLines();
+    });
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); inp.blur(); input.focus(); }
+    });
+    inp.addEventListener('focus', function () { inp.select(); });
+    q.appendChild(minus); q.appendChild(inp); q.appendChild(plus);
+    row.appendChild(q);
+
+    var del = el('button', 'l-del', '×'); del.type = 'button'; del.setAttribute('aria-label', 'حذف ' + l.product);
+    del.addEventListener('click', function () {
+      lines = lines.filter(function (x) { return x !== l; });
+      renderLines(); input.focus();
+    });
+    row.appendChild(del);
+
+    if (l.error) row.appendChild(el('div', 'l-err', l.error));
+    else if (IS_OUT && l.qty > l.stock) row.appendChild(el('div', 'l-err', 'تعداد بیشتر از موجودی (' + l.stock + ') است.'));
+    return row;
+  }
+
+  function renderLines(flashId) {
+    linesEl.textContent = '';
+    lines.forEach(function (l, i) {
+      var row = buildLine(l, i);
+      if (flashId && l.id === flashId) row.classList.add('flash');
+      linesEl.appendChild(row);
+    });
+    emptyEl.hidden = lines.length > 0;
+    clearAll.hidden = lines.length === 0;
+    updateTotals();
+  }
+
+  function updateTotals() {
+    var n = lines.length, q = 0;
+    lines.forEach(function (l) { q += (l.qty || 0); });
+    $('tLines').textContent = n; $('tQty').textContent = q;
+    $('mLines').textContent = n; $('mQty').textContent = q;
+    countBadge.textContent = n + ' قلم';
+    submitBtn.disabled = mSubmit.disabled = !(n > 0) || busy;
+  }
+
+  /* ---------- submit ---------- */
+  function setBusy(b) {
+    busy = b;
+    submitBtn.textContent = b ? 'در حال ثبت...' : (IS_OUT ? 'ثبت خروج از انبار' : 'ثبت ورود به انبار');
+    mSubmit.textContent = b ? '...' : (IS_OUT ? 'ثبت خروج' : 'ثبت ورود');
+    updateTotals();
+  }
+
+  function submit() {
+    if (busy || !lines.length) return;
+    if (!whSel.value) { setStatus('ابتدا انبار را انتخاب کنید.', 'error'); beep(false); whSel.focus(); whSel.scrollIntoView({ block: 'center' }); return; }
+    var bad = lines.filter(isBad);
+    if (bad.length) { setStatus('تعداد برخی اقلام نامعتبر یا بیشتر از موجودی است.', 'error'); beep(false); renderLines(); return; }
+
+    var snapshot = lines.map(function (l) { return { product: l.product, color: l.color, size: l.size, sku: l.sku, qty: l.qty }; });
+    setBusy(true); setStatus('در حال ثبت فاکتور...', '');
+    fetch(SUBMIT_URL, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        type: MOVE, warehouse: whSel.value, note: noteEl.value,
+        items: lines.map(function (l) { return { variant: l.id, quantity: l.qty }; })
+      })
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        var d = null; try { d = JSON.parse(t); } catch (e) { /* پاسخ غیر JSON */ }
+        return { status: r.status, data: d };
+      });
+    }).then(function (res) {
+      setBusy(false);
+      var d = res.data;
+      if (res.status === 200 && d && d.ok) { onSuccess(d, snapshot); return; }
+      beep(false);
+      if (d && d.errors && d.errors.length) {
+        d.errors.forEach(function (er) {
+          var l = find(er.variant);
+          if (l) { l.error = er.message; if (typeof er.stock === 'number') l.stock = er.stock; }
+        });
+        renderLines();
+      }
+      var msg = d && d.message ? d.message
+        : (res.status === 403 ? 'نشست شما منقضی شده؛ صفحه را دوباره بارگذاری کنید.' : 'ثبت فاکتور انجام نشد (خطای سرور).');
+      setStatus(msg, 'error');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }).catch(function () {
+      setBusy(false); beep(false);
+      setStatus('ارتباط با سرور برقرار نشد؛ فاکتور ثبت نشده است. دوباره تلاش کنید.', 'error');
+    });
+  }
+
+  function onSuccess(d, snapshot) {
+    beep(true);
+    buildPrint(d, snapshot);
+    $('doneCode').textContent = d.code;
+    $('doneInfo').textContent = d.lines + ' قلم، مجموع ' + d.quantity + ' عدد — انبار: ' + d.warehouse;
+    lines = []; noteEl.value = ''; renderLines();
+    setStatus('', '');
+    doneBox.hidden = false;
+    doneBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function buildPrint(d, snapshot) {
+    var ps = $('printSheet'); ps.textContent = '';
+    ps.appendChild(el('h1', null, (d.type === 'out' ? 'فاکتور خروج از انبار' : 'فاکتور ورود به انبار')));
+    var meta = el('div', 'meta');
+    meta.appendChild(el('span', null, 'شماره سند: ' + d.code));
+    meta.appendChild(el('span', null, 'تاریخ: ' + d.date));
+    meta.appendChild(el('span', null, 'انبار: ' + d.warehouse));
+    ps.appendChild(meta);
+    var tbl = el('table'), thead = el('thead'), hr = el('tr');
+    ['#', 'کالا', 'رنگ / سایز', 'کد کالا', 'تعداد'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+    thead.appendChild(hr); tbl.appendChild(thead);
+    var tb = el('tbody');
+    snapshot.forEach(function (s, i) {
+      var tr = el('tr');
+      [String(i + 1), s.product, s.color + ' / ' + s.size, s.sku, String(s.qty)].forEach(function (t) { tr.appendChild(el('td', null, t)); });
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb); ps.appendChild(tbl);
+    ps.appendChild(el('p', 'sum', 'جمع کل: ' + d.quantity + ' عدد در ' + d.lines + ' قلم'));
+  }
+
+  /* ---------- events ---------- */
+  input.addEventListener('input', onInput);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); onEnter(); }
+    else if (e.key === 'ArrowDown') { if (!results.hidden) { e.preventDefault(); setActive(active + 1); } }
+    else if (e.key === 'ArrowUp') { if (!results.hidden) { e.preventDefault(); setActive(active - 1); } }
+    else if (e.key === 'Escape') { hideResults(); }
+  });
+  clearQ.addEventListener('click', function () { resetInput(); setStatus('', ''); });
+  document.addEventListener('click', function (e) {
+    if (!results.hidden && !e.target.closest('.search-box')) hideResults();
+  });
+  // اگر فوکوس روی بدنه‌ی صفحه بود و بارکدخوان شروع به تایپ کرد، کاراکترها وارد کادر جستجو شوند
+  document.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (t && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(t.tagName)) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+    input.focus();
+  });
+
+  clearAll.addEventListener('click', function () {
+    if (!lines.length || !window.confirm('همه‌ی اقلام فاکتور پاک شود؟')) return;
+    lines = []; renderLines(); setStatus('', ''); input.focus();
+  });
+  submitBtn.addEventListener('click', submit);
+  mSubmit.addEventListener('click', submit);
+  $('newInv').addEventListener('click', function () { doneBox.hidden = true; setStatus('', ''); input.focus(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  $('printBtn').addEventListener('click', function () { window.print(); });
+
+  // انبار پیش‌فرض / آخرین انبار انتخاب‌شده
+  var def = root.getAttribute('data-default-wh'), saved = '';
+  try { saved = window.localStorage.getItem('invoice_warehouse') || ''; } catch (e) { /* ignore */ }
+  if (def) whSel.value = def;
+  else if (saved && whSel.querySelector('option[value="' + saved + '"]')) whSel.value = saved;
+  whSel.addEventListener('change', function () {
+    try { window.localStorage.setItem('invoice_warehouse', whSel.value); } catch (e) { /* ignore */ }
+  });
+
+  window.addEventListener('beforeunload', function (e) {
+    if (lines.length && !busy) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  renderLines();
+  input.focus();
+})();
+</script>
+{% endblock %}
