@@ -79,8 +79,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'fibonacci',
-        'USER': 'lucas',
-        'PASSWORD': 'یک_رمز_دلخواه',
+        'USER': 'root',
+        'PASSWORD': '!Re32+z@72!',
         'HOST': '127.0.0.1',
         'PORT': '3306',
     }

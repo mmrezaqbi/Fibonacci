@@ -181,58 +181,58 @@
       <div><b>سامانه انبارداری</b><small>مدیریت موجودی</small></div>
     </div>
 
-    <nav class="nav">
+        <nav class="nav">
       <div class="nav-title">منوی اصلی</div>
-      <a href="{% url 'application:home' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+      {# لینک‌ها را با {% url 'نام_url' %} جایگزین کنید #}
+      <a href="{% url 'application:home' %}" class="{% if request.resolver_match.view_name == 'application:home' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
         داشبورد
       </a>
-      
-      <a href="{% url 'application:product_list' %}">
+      <a href="{% url 'application:product_list' %}" class="{% if request.resolver_match.view_name == 'application:product_list' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3.3 7.5L12 12.5l8.7-5"/></svg>
         کالاها
       </a>
-      <a href="{% url 'application:product_create' %}" class="{% if request.resolver_match.url_name == 'product_create' %}active{% endif %}">
+      <a href="{% url 'application:product_create' %}" class="{% if request.resolver_match.view_name == 'application:product_create' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M12 22V12.5"/><path d="M3.3 7.5L12 12.5l8.7-5"/></svg>
         افزودن کالا 
       </a>
-      <a href="{% url 'application:invoice_in' %}">
+      <a href="{% url 'application:invoice_in' %}" class="{% if request.resolver_match.view_name == 'application:invoice_in' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
         ورود به انبار
       </a>
-      <a href="{% url 'application:invoice_out' %}">
+      <a href="{% url 'application:invoice_out' %}" class="{% if request.resolver_match.view_name == 'application:invoice_out' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 4h16"/></svg>
         خروج از انبار
       </a>
-      <a href="{% url 'application:stock_in' %}">
+      <a href="{% url 'application:stock_in' %}" class="{% if request.resolver_match.view_name == 'application:stock_in' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
         ورود به انبار تکی
       </a>
-      <a href="{% url 'application:stock_out' %}">
+      <a href="{% url 'application:stock_out' %}" class="{% if request.resolver_match.view_name == 'application:stock_out' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 4h16"/></svg>
         خروج از انبار تکی
       </a>
-      <a href="{% url 'application:category_list' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+      <a href="{% url 'application:category_list' %}" class="{% if request.resolver_match.view_name == 'application:category_list' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
         دسته بندی ها
       </a>
-      <a href="{% url 'application:warehouse_list' %}">
+      <a href="{% url 'application:warehouse_list' %}" class="{% if request.resolver_match.view_name == 'application:warehouse_list' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
         انبارها
       </a>
       <div class="nav-title">گزارش و تنظیمات</div>
-      <a href="{% url 'application:reports' %}">
+      <a href="{% url 'application:reports' %}" class="{% if request.resolver_match.view_name == 'application:reports' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
         گزارش‌ها
       </a>
       {% if request.user|has_role:"admin" %}
-      <a href="{% url 'application:settings_index' %}">
+      <a href="{% url 'application:settings_index' %}" class="{% if request.resolver_match.view_name == 'application:settings_index' %}active{% endif %}">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
         تنظیمات
       </a>
       {% endif %}
     </nav>
-
+    
     <form method="post" action="{% url 'application:logout' %}">
       {% csrf_token %}
       <button type="submit" class="logout-btn">
