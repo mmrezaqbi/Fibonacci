@@ -7,6 +7,7 @@ from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from .templatetags.money_tags import money
+from .templatetags.nav_tags import section_for
 from .xlsx import build_xlsx
 from .widgets import MoneyInput
 from .invoice_utils import clean_buyer_name, is_valid_mobile, normalize_phone
@@ -41,6 +42,18 @@ class MoneyTests(SimpleTestCase):
         w = MoneyInput()
         self.assertEqual(w.format_value(1250000), "1,250,000")
         self.assertEqual(w.value_from_datadict({"price": "۱,۲۵۰,۰۰۰"}, {}, "price"), "1250000")
+
+
+class NavSectionTests(SimpleTestCase):
+    def test_sub_pages_keep_their_menu_item_active(self):
+        cases = {
+            "home": "home", "product_detail": "products", "category_edit": "categories",
+            "warehouse_detail": "warehouses", "report_sales": "reports", "invoice_detail": "reports",
+            "user_edit": "settings", "color_list": "settings", "store_settings": "settings",
+            "product_manage_edit": "settings", "woo_settings": "settings", "unknown": "",
+        }
+        for name, expected in cases.items():
+            self.assertEqual(section_for(name), expected, name)
 
 
 class InvoiceBuyerTests(TestCase):
@@ -233,6 +246,14 @@ class ExportAndPrintTests(ReportsTests):
         with zipfile.ZipFile(io.BytesIO(res.content)) as z:
             xml = z.read("xl/worksheets/sheet1.xml").decode("utf-8")
         self.assertNotIn("علی رضایی", xml)
+
+    def test_warehouse_pages_do_not_show_export_buttons(self):
+        res = self.client.get(reverse("application:warehouse_detail", args=[self.warehouse.pk]))
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(res.context["can_export"])
+        self.assertNotContains(res, "export=xlsx")
+        res = self.client.get(reverse("application:report_sales"))
+        self.assertTrue(res.context["can_export"])
 
     def test_print_mode_shows_store_name_and_all_rows(self):
         StoreSettings.objects.update_or_create(pk=1, defaults={"store_name": "فروشگاه فیبوناچی"})

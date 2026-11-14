@@ -10,6 +10,9 @@
     display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 12px;
     background: var(--input); border: 1px solid var(--border); color: var(--text); font-size: .88rem; cursor: pointer;
   }
+  .pick-item input { width: 18px; height: 18px; accent-color: var(--primary); flex-shrink: 0; }
+  .pick-item { min-height: 44px; }
+  @media (max-width: 640px) { .pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .pick-item { overflow-wrap: anywhere; } }
   .pick-none { color: var(--muted); font-size: .84rem; }
 </style>
 {% endblock %}
@@ -32,7 +35,22 @@
       {% include "includes/field.html" with field=form.season %}
       {% include "includes/field.html" with field=form.material %}
       {% include "includes/field.html" with field=form.price %}
-      {% include "includes/field.html" with field=form.image extra_class="wide" %}
+      <div class="field wide">
+        <label for="{{ form.image.id_for_label }}">{{ form.image.label }}</label>
+        <div class="img-field">
+          {% if product.image %}
+          <div class="img-current">
+            <img src="{{ product.image.url }}" alt="" loading="lazy">
+            <div class="img-meta">
+              <a href="{{ product.image.url }}" target="_blank" rel="noopener">مشاهده‌ی تصویر فعلی</a>
+              <label class="clear"><input type="checkbox" name="{{ form.image.html_name }}-clear" id="{{ form.image.html_name }}-clear_id"> حذف تصویر</label>
+            </div>
+          </div>
+          {% endif %}
+          <input type="file" name="{{ form.image.html_name }}" id="{{ form.image.id_for_label }}" accept="image/*">
+        </div>
+        {% for error in form.image.errors %}<small class="err">{{ error }}</small>{% endfor %}
+      </div>
       {% include "includes/field.html" with field=form.description extra_class="wide" %}
       {% include "includes/field.html" with field=form.is_active extra_class="check-row wide" %}
     </div>

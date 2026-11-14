@@ -1,9 +1,10 @@
-{% load jalali_tags access_tags %}
+{% load jalali_tags access_tags nav_tags %}
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0e14">
   <title>{% block title %}سامانه انبارداری{% endblock %}</title>
   <style>
     :root {
@@ -167,11 +168,64 @@
       .menu-btn { width: 40px; height: 40px; }
       .greet h1 { font-size: 1rem; }
     }
+
+    /* Page container: محتوا در صفحه‌های خیلی عریض وسط‌چین و محدود می‌ماند */
+    .page { width: 100%; max-width: 1560px; margin-inline: auto; min-width: 0; }
+    .topbar { max-width: 1560px; margin-inline: auto; }
+    .topbar-actions { display: flex; align-items: center; gap: 10px; margin-inline-start: auto; }
+
+    /* Accessibility */
+    :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 8px; }
+    .nav a:focus-visible, .logout-btn:focus-visible, .menu-btn:focus-visible { outline-offset: -2px; }
+    input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: 0; }
+    .skip-link { position: absolute; top: -60px; right: 12px; z-index: 100; padding: 10px 16px; border-radius: 10px; background: var(--primary); color: #fff; }
+    .skip-link:focus { top: 12px; }
+    ::selection { background: rgba(108, 140, 255, .35); }
+    table, .money, .num { font-variant-numeric: tabular-nums; }
+    .stat b, .stat-value { overflow-wrap: anywhere; }
+    input, select, textarea { max-width: 100%; }
+    .sidebar form { margin-top: 14px; }
+
+    /* Large desktops: more breathing room, still readable */
+    @media (min-width: 1700px) {
+      :root { --sidebar: 270px; }
+      .main { padding: 28px 40px 48px; }
+      body { font-size: 16px; }
+    }
+
+    /* Touch devices: comfortable hit areas (min 44px) */
+    @media (pointer: coarse) {
+      .btn, .btn-sm, .btn-mini, .btn-ghost, .detail-btn, .btn-in, .btn-out, .chip label, .tabs a, .pager a, .pager span { min-height: 44px; }
+      .btn-sm, .btn-mini, .btn-ghost, .detail-btn, .btn-in, .btn-out, .tabs a { display: inline-flex; align-items: center; justify-content: center; }
+    }
+
+    /* Data tables turn into cards on phones: add class="stack" and data-label to each td */
+    @media (max-width: 640px) {
+      table.stack { display: block; min-width: 0 !important; width: 100%; }
+      table.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      table.stack tbody, table.stack tr { display: block; }
+      table.stack tr { padding: 8px 14px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255, 255, 255, .025); }
+      table.stack td { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 7px 0; border: 0; white-space: normal; text-align: left; }
+      table.stack td::before { content: attr(data-label); color: var(--muted); font-size: .76rem; flex-shrink: 0; }
+      table.stack td:not([data-label])::before { content: none; }
+      table.stack td[colspan] { display: block; text-align: center; }
+      table.stack tr:hover td { background: none; }
+      .pager { gap: 4px; }
+      .pager a, .pager span { min-width: 36px; padding: 0 9px; }
+    }
+    @media (max-width: 420px) { .stat b, .stat-value { font-size: 1.35rem; } }
+    @media print {
+      .sidebar, .overlay, .menu-btn, .user-chip, body::before, body::after { display: none !important; }
+      .main { margin: 0 !important; padding: 0 !important; }
+      .page, .topbar { max-width: none; }
+    }
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
   </style>
   {% block extra_css %}{% endblock %}
+  {% include "includes/favicon.html" %}
 </head>
 <body>
+  <a class="skip-link" href="#main">رفتن به محتوا</a>
 
   <aside class="sidebar" id="sidebar">
     <div class="brand">
@@ -181,52 +235,53 @@
       <div><b>سامانه انبارداری</b><small>مدیریت موجودی</small></div>
     </div>
 
-        <nav class="nav">
+        {% nav_section as section %}
+    <nav class="nav" aria-label="منوی اصلی">
       <div class="nav-title">منوی اصلی</div>
       {# لینک‌ها را با {% url 'نام_url' %} جایگزین کنید #}
-      <a href="{% url 'application:home' %}" class="{% if request.resolver_match.view_name == 'application:home' %}active{% endif %}">
+      <a href="{% url 'application:home' %}" class="{% if section == 'home' %}active{% endif %}" {% if section == 'home' %}aria-current="page"{% endif %}>
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
         داشبورد
       </a>
-      <a href="{% url 'application:product_list' %}" class="{% if request.resolver_match.view_name == 'application:product_list' %}active{% endif %}">
+      <a href="{% url 'application:product_list' %}" class="{% if section == 'products' %}active{% endif %}" {% if section == 'products' %}aria-current="page"{% endif %}>
         <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3.3 7.5L12 12.5l8.7-5"/></svg>
         کالاها
       </a>
-      <a href="{% url 'application:product_create' %}" class="{% if request.resolver_match.view_name == 'application:product_create' %}active{% endif %}">
+      <a href="{% url 'application:product_create' %}" class="{% if section == 'product_create' %}active{% endif %}" {% if section == 'product_create' %}aria-current="page"{% endif %}>
         <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M12 22V12.5"/><path d="M3.3 7.5L12 12.5l8.7-5"/></svg>
         افزودن کالا 
       </a>
-      <a href="{% url 'application:invoice_in' %}" class="{% if request.resolver_match.view_name == 'application:invoice_in' %}active{% endif %}">
+      <a href="{% url 'application:invoice_in' %}" class="{% if section == 'invoice_in' %}active{% endif %}" {% if section == 'invoice_in' %}aria-current="page"{% endif %}>
         <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
         ورود به انبار
       </a>
-      <a href="{% url 'application:invoice_out' %}" class="{% if request.resolver_match.view_name == 'application:invoice_out' %}active{% endif %}">
+      <a href="{% url 'application:invoice_out' %}" class="{% if section == 'invoice_out' %}active{% endif %}" {% if section == 'invoice_out' %}aria-current="page"{% endif %}>
         <svg viewBox="0 0 24 24"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 4h16"/></svg>
         خروج از انبار
       </a>
-      <a href="{% url 'application:stock_in' %}" class="{% if request.resolver_match.view_name == 'application:stock_in' %}active{% endif %}">
+      <a href="{% url 'application:stock_in' %}" class="{% if section == 'stock_in' %}active{% endif %}" {% if section == 'stock_in' %}aria-current="page"{% endif %}>
         <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
         ورود به انبار تکی
       </a>
-      <a href="{% url 'application:stock_out' %}" class="{% if request.resolver_match.view_name == 'application:stock_out' %}active{% endif %}">
+      <a href="{% url 'application:stock_out' %}" class="{% if section == 'stock_out' %}active{% endif %}" {% if section == 'stock_out' %}aria-current="page"{% endif %}>
         <svg viewBox="0 0 24 24"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M4 4h16"/></svg>
         خروج از انبار تکی
       </a>
-      <a href="{% url 'application:category_list' %}" class="{% if request.resolver_match.view_name == 'application:category_list' %}active{% endif %}">
+      <a href="{% url 'application:category_list' %}" class="{% if section == 'categories' %}active{% endif %}" {% if section == 'categories' %}aria-current="page"{% endif %}>
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
         دسته بندی ها
       </a>
-      <a href="{% url 'application:warehouse_list' %}" class="{% if request.resolver_match.view_name == 'application:warehouse_list' %}active{% endif %}">
+      <a href="{% url 'application:warehouse_list' %}" class="{% if section == 'warehouses' %}active{% endif %}" {% if section == 'warehouses' %}aria-current="page"{% endif %}>
         <svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
         انبارها
       </a>
       <div class="nav-title">گزارش و تنظیمات</div>
-      <a href="{% url 'application:reports' %}" class="{% if request.resolver_match.view_name == 'application:reports' %}active{% endif %}">
+      <a href="{% url 'application:reports' %}" class="{% if section == 'reports' %}active{% endif %}" {% if section == 'reports' %}aria-current="page"{% endif %}>
         <svg viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
         گزارش‌ها
       </a>
       {% if request.user|has_role:"admin" %}
-      <a href="{% url 'application:settings_index' %}" class="{% if request.resolver_match.view_name == 'application:settings_index' %}active{% endif %}">
+      <a href="{% url 'application:settings_index' %}" class="{% if section == 'settings' %}active{% endif %}" {% if section == 'settings' %}aria-current="page"{% endif %}>
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
         تنظیمات
       </a>
@@ -243,7 +298,7 @@
   </aside>
   <div class="overlay" id="overlay"></div>
 
-  <main class="main">
+  <main class="main" id="main">
     <header class="topbar">
       <div class="topbar-right">
         <button type="button" class="menu-btn" id="menuBtn" aria-label="منو">
@@ -254,7 +309,8 @@
           <p>{% block page_subtitle %}{% endblock %}</p>
         </div>
       </div>
-      <div class="user-chip">
+      {% block topbar_extra %}{% endblock %}
+      <div class="user-chip" title="{{ user.username }}">
         <div class="avatar">{{ user.username|slice:":1"|upper }}</div>
         <span>{{ user.username }}</span>
       </div>
@@ -268,7 +324,9 @@
       </ul>
     {% endif %}
 
-    {% block content %}{% endblock %}
+    <div class="page">
+      {% block content %}{% endblock %}
+    </div>
   </main>
 
   <script>

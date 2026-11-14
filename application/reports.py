@@ -104,13 +104,15 @@ def _paginate(request, queryset, size):
     params = request.GET.copy()
     for key in ("page", "export", "print"):
         params.pop(key, None)
+    url_name = getattr(request.resolver_match, "url_name", "")
     return {
         "print_mode": print_mode,
         "print_truncated": print_mode and paginator.count > PRINT_LIMIT,
         "print_store": StoreSettings.load().store_name,
         "print_time": _jalali_stamp(timezone.now()),
-        "report_title": REPORT_TITLES.get(getattr(request.resolver_match, "url_name", ""), "گزارش"),
-        "can_export": True,
+        "report_title": REPORT_TITLES.get(url_name, "گزارش"),
+        # دکمه‌های Excel/چاپ فقط در صفحه‌های گزارش؛ صفحه‌ی انبارها از _paginate مشترک استفاده می‌کند
+        "can_export": url_name in REPORT_TITLES,
         "page_obj": page_obj,
         "page_range": list(paginator.get_elided_page_range(page_obj.number, on_each_side=1, on_ends=1)),
         "ellipsis": paginator.ELLIPSIS,
