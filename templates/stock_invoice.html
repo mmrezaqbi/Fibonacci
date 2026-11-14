@@ -94,6 +94,19 @@
   .lines-empty { text-align: center; color: var(--muted); padding: 38px 10px 30px; font-size: .9rem; line-height: 2; }
   .lines-empty svg { width: 44px; height: 44px; stroke-width: 1.2; color: #3b4359; display: block; margin: 0 auto 8px; }
 
+  /* ---------- قیمت در ردیف فاکتور (فقط خروج) ---------- */
+  .invoice.mode-out .line-cols,
+  .invoice.mode-out .line { grid-template-columns: 34px minmax(0, 1fr) 76px 156px 150px 38px; }
+  .l-price { display: flex; flex-direction: column; gap: 4px; }
+  .l-price input {
+    width: 100%; height: 38px; text-align: center; background: var(--input); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font: inherit; font-size: .95rem; outline: none; -moz-appearance: textfield;
+  }
+  .l-price input::-webkit-outer-spin-button, .l-price input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .l-price input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108, 140, 255, .16); }
+  .line.bad .l-price input { border-color: var(--danger); }
+  .l-sum { color: var(--muted); font-size: .74rem; text-align: center; }
+
   /* ---------- side summary ---------- */
   .inv-side { padding: 18px; position: sticky; top: 16px; display: flex; flex-direction: column; gap: 14px; }
   .inv-side h2 { font-size: 1.02rem; }
@@ -142,6 +155,50 @@
   }
   .btn-sm.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); font-weight: 500; }
   .btn-sm.ghost:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
+  .btn-sm:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* ---------- پاپ‌آپ انتخاب ترکیب ---------- */
+  body.modal-open { overflow: hidden; }
+  .modal-back {
+    position: fixed; inset: 0; z-index: 60; background: rgba(5, 8, 15, .72);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .pmodal {
+    width: min(760px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column;
+    background: var(--panel-solid); border: 1px solid rgba(255, 255, 255, .14); border-radius: 18px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .6); overflow: hidden;
+  }
+  .pm-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--border); }
+  .pm-head h2 { font-size: 1.05rem; overflow-wrap: anywhere; }
+  .pm-head small { color: var(--muted); font-size: .78rem; }
+  .pm-x { width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font-size: 1.4rem; cursor: pointer; flex-shrink: 0; }
+  .pm-x:hover { color: var(--text); background: rgba(255, 255, 255, .06); }
+  .pm-body { padding: 16px 18px; overflow: auto; -webkit-overflow-scrolling: touch; }
+  .pm-note { text-align: center; color: var(--muted); padding: 30px 0; font-size: .9rem; }
+  .pm-note.err { color: var(--danger); }
+  .pm-lead { color: var(--muted); font-size: .8rem; margin-bottom: 12px; line-height: 1.8; }
+  .pm-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; }
+  .pm-matrix { border-collapse: collapse; width: 100%; min-width: 360px; }
+  .pm-matrix th, .pm-matrix td { padding: 8px 8px; text-align: center; border-bottom: 1px solid var(--border); }
+  .pm-matrix tbody tr:last-child th, .pm-matrix tbody tr:last-child td { border-bottom: 0; }
+  .pm-matrix thead th { color: var(--muted); font-size: .8rem; font-weight: 600; background: rgba(255, 255, 255, .03); }
+  .pm-matrix .row-head { text-align: right; white-space: nowrap; font-size: .88rem; font-weight: 500; position: sticky; right: 0; background: var(--panel-solid); z-index: 1; }
+  .pm-matrix .corner { text-align: right; }
+  .pm-cell.none { color: #3b4359; }
+  .pm-qty {
+    width: 68px; height: 40px; text-align: center; background: var(--input); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font: inherit; font-size: 1rem; font-weight: 700; outline: none; -moz-appearance: textfield;
+  }
+  .pm-qty::-webkit-outer-spin-button, .pm-qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .pm-qty:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108, 140, 255, .16); }
+  .pm-qty:disabled { opacity: .35; }
+  .pm-cell small { display: block; font-size: .7rem; margin-top: 4px; color: var(--success); }
+  .pm-cell small.low { color: var(--warning); }
+  .pm-cell small.zero { color: var(--danger); }
+  .pm-cell small.pm-in { color: var(--primary); }
+  .pm-foot { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .pm-total { margin-right: auto; font-size: .86rem; color: var(--muted); }
+  .pm-total b { color: var(--text); }
 
   .print-sheet { display: none; }
 
@@ -162,6 +219,10 @@
       grid-template-areas: "idx info del" "stock qty qty";
       row-gap: 10px; padding: 12px 2px;
     }
+    .invoice.mode-out .line {
+      grid-template-columns: 26px minmax(0, 1fr) 38px;
+      grid-template-areas: "idx info del" "stock qty qty" "price price price";
+    }
     .l-idx { grid-area: idx; align-self: start; padding-top: 3px; }
     .l-info { grid-area: info; }
     .l-del { grid-area: del; align-self: start; }
@@ -169,12 +230,20 @@
     .l-stock b { display: inline; }
     .l-qty { grid-area: qty; justify-content: flex-end; }
     .l-qty input { font-size: 16px; }
+    .l-price { grid-area: price; }
+    .l-price input { font-size: 16px; }
     .l-err { grid-column: 1 / -1; }
     .res { padding: 12px 10px; }
     .results { max-height: 52vh; }
     .inv-side { padding: 14px; }
     .fld select, .fld textarea { font-size: 16px; }
     .mobile-bar .btn-submit { min-width: 120px; }
+
+    .modal-back { padding: 0; align-items: flex-end; }
+    .pmodal { width: 100%; max-height: 92vh; border-radius: 18px 18px 0 0; }
+    .pm-qty { font-size: 16px; }
+    .pm-foot .btn-sm { flex: 1; }
+    .pm-total { flex: 1 1 100%; margin-right: 0; order: -1; }
   }
 
   /* ---------- print ---------- */
@@ -199,6 +268,8 @@
 <div id="invoice" class="invoice mode-{{ movement }}"
      data-movement="{{ movement }}"
      data-search-url="{% url 'application:api_variant_search' %}"
+     data-product-search-url="{% url 'application:api_product_search' %}"
+     data-variants-url="{% url 'application:api_product_variants' 0 %}"
      data-submit-url="{% url 'application:api_invoice_submit' %}"
      data-default-wh="{{ default_warehouse }}">
   {% csrf_token %}
@@ -208,7 +279,7 @@
       <section class="inv-main">
 
         <div class="card search-card">
-          <label for="q">جستجوی کالا (بارکد، کد کالا، نام، برند، رنگ یا سایز)</label>
+          <label for="q">جستجوی کالا (نام، کد مدل، برند، رنگ، سایز یا بارکد)</label>
           <div class="search-box">
             <svg viewBox="0 0 24 24"><path d="M4 5v14M8 5v14M12 5v14M16 5v14M20 5v14"/></svg>
             <input type="text" id="q" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus
@@ -218,8 +289,8 @@
             <div class="results" id="results" role="listbox" hidden></div>
           </div>
           <p class="hint">
-            بارکدخوان مثل کیبورد کار می‌کند: با هر اسکن کالا به فاکتور اضافه می‌شود و اسکن دوباره‌ی همان کالا یک عدد به تعداد می‌افزاید.
-            برای انتخاب از لیست از کلیدهای ↑ ↓ و Enter استفاده کنید.
+            بارکدخوان مثل کیبورد کار می‌کند: با هر اسکن همان رنگ و سایز به فاکتور اضافه می‌شود و اسکن دوباره یک عدد به تعداد می‌افزاید.
+            با جستجوی نام، محصول نمایش داده می‌شود؛ روی آن بزنید تا رنگ‌ها و سایزهایش در پنجره‌ای باز شود.
           </p>
           <p class="status" id="status" role="status" aria-live="polite"></p>
         </div>
@@ -231,7 +302,7 @@
             <button type="button" class="link-btn" id="clearAll" hidden>پاک کردن همه</button>
           </div>
           <div class="line-cols" aria-hidden="true">
-            <span>#</span><span>کالا</span><span style="text-align:center">موجودی</span><span>تعداد</span><span></span>
+            <span>#</span><span>کالا</span><span style="text-align:center">موجودی</span><span>تعداد</span>{% if is_out %}<span>قیمت واحد (تومان)</span>{% endif %}<span></span>
           </div>
           <div id="lines"></div>
           <div class="lines-empty" id="linesEmpty">
@@ -257,6 +328,7 @@
         <div class="totals">
           <div><span>تعداد اقلام</span><b id="tLines">0</b></div>
           <div class="grand"><span>جمع تعداد</span><b id="tQty">0</b></div>
+          {% if is_out %}<div class="grand"><span>جمع مبلغ (تومان)</span><b id="tPrice">0</b></div>{% endif %}
         </div>
         <button type="button" class="btn-submit" id="submitBtn" disabled>
           {% if is_out %}ثبت خروج از انبار{% else %}ثبت ورود به انبار{% endif %}
@@ -266,8 +338,23 @@
     </div>
 
     <div class="mobile-bar" id="mobileBar">
-      <div class="tot"><b id="mLines">0</b> قلم — <b id="mQty">0</b> عدد</div>
+      <div class="tot"><b id="mLines">0</b> قلم — <b id="mQty">0</b> عدد{% if is_out %}<br>مبلغ: <b id="mPrice">0</b> تومان{% endif %}</div>
       <button type="button" class="btn-submit" id="mSubmit" disabled>{% if is_out %}ثبت خروج{% else %}ثبت ورود{% endif %}</button>
+    </div>
+
+    <div class="modal-back" id="pmodal" hidden>
+      <div class="pmodal" role="dialog" aria-modal="true" aria-labelledby="pmTitle">
+        <div class="pm-head">
+          <div><h2 id="pmTitle"></h2><small id="pmSub"></small></div>
+          <button type="button" class="pm-x" id="pmClose" aria-label="بستن">×</button>
+        </div>
+        <div class="pm-body" id="pmBody"></div>
+        <div class="pm-foot">
+          <button type="button" class="btn-sm" id="pmAdd" disabled>افزودن به فاکتور</button>
+          <button type="button" class="btn-sm ghost" id="pmCancel">انصراف</button>
+          <span class="pm-total" id="pmTotal"></span>
+        </div>
+      </div>
     </div>
 
     <div class="card done" id="done" hidden>
@@ -294,7 +381,9 @@
   var root = document.getElementById('invoice');
   var IS_OUT = root.getAttribute('data-movement') === 'out';
   var MOVE = IS_OUT ? 'out' : 'in';
-  var SEARCH_URL = root.getAttribute('data-search-url');
+  var SEARCH_URL = root.getAttribute('data-search-url');                  // تطابق دقیق بارکد/کد
+  var PRODUCT_SEARCH_URL = root.getAttribute('data-product-search-url');  // جستجوی محصول
+  var VARIANTS_URL = root.getAttribute('data-variants-url');              // ترکیب‌های یک محصول
   var SUBMIT_URL = root.getAttribute('data-submit-url');
   var csrf = root.querySelector('input[name=csrfmiddlewaretoken]').value;
 
@@ -303,11 +392,14 @@
   var linesEl = $('lines'), emptyEl = $('linesEmpty'), countBadge = $('countBadge'), clearAll = $('clearAll');
   var whSel = $('warehouse'), noteEl = $('note'), soundEl = $('sound');
   var submitBtn = $('submitBtn'), mSubmit = $('mSubmit');
-  var doneBox = $('done'), invGrid = $('invGrid'), mobileBar = $('mobileBar');
+  var doneBox = $('done');
+  var pm = $('pmodal'), pmTitle = $('pmTitle'), pmSub = $('pmSub'), pmBody = $('pmBody'),
+      pmTotal = $('pmTotal'), pmAdd = $('pmAdd');
 
-  var lines = [];          // {id, product, color, hex, size, sku, barcode, stock, qty, error}
+  var lines = [];          // {id, product, color, hex, size, sku, barcode, stock, qty, price, error}
   var items = [], active = -1;
   var timer = null, ctrl = null, busy = false;
+  var pmToken = 0, pmVariants = [], pmInputs = {};
 
   /* ---------- helpers ---------- */
   function el(tag, cls, text) {
@@ -322,6 +414,7 @@
       .replace(/[\u0660-\u0669]/g, function (d) { return d.charCodeAt(0) - 1632; })
       .trim();
   }
+  function fmt(n) { return (n || 0).toLocaleString('en-US'); }
   function setStatus(msg, type) {
     statusEl.textContent = msg || '';
     statusEl.className = 'status' + (type ? ' ' + type : '');
@@ -349,33 +442,37 @@
   function swatch(hex) {
     var s = el('span', 'swatch'); s.style.background = hex || 'transparent'; return s;
   }
+  function priceOk(l) { return typeof l.price === 'number' && !isNaN(l.price) && l.price >= 0; }
+  function lineTotal(l) { return (l.qty || 0) * (priceOk(l) ? l.price : 0); }
+  function isBad(l) {
+    return !(l.qty >= 1) || (IS_OUT && (l.qty > l.stock || !priceOk(l)));
+  }
 
-  /* ---------- search dropdown ---------- */
+  /* ---------- search dropdown (محصولات) ---------- */
   function hideResults() { results.hidden = true; results.textContent = ''; items = []; active = -1; }
 
-  function renderResults(list) {
+  function renderProducts(list) {
     results.textContent = '';
     items = list; active = list.length ? 0 : -1;
     if (!list.length) {
-      results.appendChild(el('div', 'res-empty', 'کالایی پیدا نشد.'));
+      results.appendChild(el('div', 'res-empty', 'محصولی پیدا نشد.'));
       results.hidden = false;
       return;
     }
-    list.forEach(function (v, i) {
-      var row = el('div', 'res' + (IS_OUT && v.stock <= 0 ? ' disabled' : '') + (i === 0 ? ' active' : ''));
+    list.forEach(function (p, i) {
+      var row = el('div', 'res' + (i === 0 ? ' active' : ''));
       row.setAttribute('role', 'option');
       var left = el('div');
-      left.appendChild(el('b', null, v.product));
+      left.appendChild(el('b', null, p.name));
       var sub = el('div', 'sub');
-      var c = el('span'); c.appendChild(swatch(v.hex)); c.appendChild(document.createTextNode(v.color + ' / ' + v.size));
-      sub.appendChild(c);
-      var sku = el('span', 'ltr', v.sku); sub.appendChild(sku);
-      if (v.barcode) { var bc = el('span', 'ltr', '▮ ' + v.barcode); sub.appendChild(bc); }
+      sub.appendChild(el('span', 'ltr', p.sku));
+      if (p.brand) sub.appendChild(el('span', null, p.brand));
+      sub.appendChild(el('span', null, p.variants + ' ترکیب'));
       left.appendChild(sub);
       row.appendChild(left);
-      row.appendChild(el('span', 'stk ' + stockClass(v), v.stock > 0 ? 'موجودی: ' + v.stock : 'ناموجود'));
+      row.appendChild(el('span', 'stk ' + (p.stock > 0 ? '' : 'zero'), p.stock > 0 ? 'موجودی کل: ' + p.stock : 'ناموجود'));
       row.addEventListener('mousedown', function (e) { e.preventDefault(); });
-      row.addEventListener('click', function () { addItem(v); });
+      row.addEventListener('click', function () { openProduct(p); });
       row.addEventListener('mouseenter', function () { setActive(i); });
       results.appendChild(row);
     });
@@ -389,17 +486,16 @@
     rows[active].scrollIntoView({ block: 'nearest' });
   }
 
-  function fetchResults(q, exact) {
+  function fetchJSON(url) {
     if (ctrl) ctrl.abort();
     ctrl = new AbortController();
-    var url = SEARCH_URL + '?q=' + encodeURIComponent(q) + (exact ? '&exact=1' : '');
     return fetch(url, {
       credentials: 'same-origin', signal: ctrl.signal,
       headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
     }).then(function (r) {
       if (!r.ok) throw new Error('http ' + r.status);
       return r.json();
-    }).then(function (d) { return d.results || []; });
+    });
   }
   function searchError(err) {
     if (err && err.name === 'AbortError') return;
@@ -413,25 +509,27 @@
     var q = normalize(input.value);
     if (q.length < 2) { hideResults(); return; }
     timer = setTimeout(function () {
-      fetchResults(q, false).then(function (list) {
+      fetchJSON(PRODUCT_SEARCH_URL + '?q=' + encodeURIComponent(q)).then(function (d) {
         if (normalize(input.value) !== q) return;   // ورودی عوض شده
-        renderResults(list);
+        renderProducts(d.results || []);
       }).catch(searchError);
     }, 220);
   }
 
-  /* Enter = اسکن بارکد (یا انتخاب گزینه‌ی فعال) */
+  /* Enter: اگر گزینه فعال هست پاپ‌آپ آن؛ وگرنه اسکن بارکد (تطابق دقیق) و بعد جستجوی محصول */
   function onEnter() {
     var q = normalize(input.value);
     if (!q) return;
     clearTimeout(timer);
-    if (!results.hidden && active >= 0 && items[active]) { addItem(items[active]); return; }
-    fetchResults(q, true).then(function (list) {
+    if (!results.hidden && active >= 0 && items[active]) { openProduct(items[active]); return; }
+    var enc = encodeURIComponent(q);
+    fetchJSON(SEARCH_URL + '?q=' + enc + '&exact=1').then(function (d) {
+      var list = d.results || [];
       if (list.length === 1) { addItem(list[0]); return; }
-      if (list.length > 1) { renderResults(list); setStatus('چند کالا با این کد پیدا شد؛ یکی را انتخاب کنید.', 'warn'); return; }
-      return fetchResults(q, false).then(function (list2) {
-        if (list2.length === 1) addItem(list2[0]);
-        else if (list2.length > 1) { renderResults(list2); setStatus('یکی از کالاها را انتخاب کنید.', 'warn'); }
+      return fetchJSON(PRODUCT_SEARCH_URL + '?q=' + enc).then(function (d2) {
+        var ps = d2.results || [];
+        if (ps.length === 1) openProduct(ps[0]);
+        else if (ps.length > 1) { renderProducts(ps); setStatus('محصول مورد نظر را انتخاب کنید.', 'warn'); }
         else { beep(false); setStatus('کالایی با «' + q + '» پیدا نشد.', 'error'); input.select(); hideResults(); }
       });
     }).catch(searchError);
@@ -439,32 +537,179 @@
 
   function resetInput() { input.value = ''; clearQ.hidden = true; hideResults(); input.focus(); }
 
-  /* ---------- invoice lines ---------- */
-  function addItem(v) {
-    doneBox.hidden = true;
-    var line = find(v.id);
-    if (!line && IS_OUT && v.stock <= 0) {
-      beep(false); setStatus('«' + v.product + '» ناموجود است.', 'error'); resetInput(); return;
+  /* ---------- پاپ‌آپ انتخاب ترکیب ---------- */
+  function updateModalTotal() {
+    var n = 0, q = 0;
+    Object.keys(pmInputs).forEach(function (k) {
+      var v = parseInt(normalize(pmInputs[k].value), 10) || 0;
+      if (v > 0 && !pmInputs[k].disabled) { n++; q += v; }
+    });
+    pmTotal.textContent = '';
+    if (n) {
+      pmTotal.appendChild(el('b', null, String(n)));
+      pmTotal.appendChild(document.createTextNode(' ترکیب — '));
+      pmTotal.appendChild(el('b', null, String(q)));
+      pmTotal.appendChild(document.createTextNode(' عدد'));
     }
-    if (line) {
-      line.stock = v.stock;
-      if (IS_OUT && line.qty + 1 > line.stock) {
-        beep(false); setStatus('موجودی «' + line.product + '» فقط ' + line.stock + ' عدد است.', 'warn');
-      } else {
-        line.qty += 1; line.error = '';
-        beep(true); setStatus(line.product + ' — تعداد: ' + line.qty, 'ok');
-      }
-    } else {
-      line = { id: v.id, product: v.product, color: v.color, hex: v.hex, size: v.size, sku: v.sku,
-               barcode: v.barcode, stock: v.stock, qty: 1, error: '' };
-      lines.unshift(line);
-      beep(true); setStatus(v.product + ' به فاکتور اضافه شد.', 'ok');
-    }
-    renderLines(line.id);
-    resetInput();
+    pmAdd.disabled = !n;
   }
 
-  function isBad(l) { return !(l.qty >= 1) || (IS_OUT && l.qty > l.stock); }
+  function closeModal(skipFocus) {
+    pmToken++;
+    pm.hidden = true;
+    document.body.classList.remove('modal-open');
+    if (!skipFocus) input.focus();
+  }
+
+  function openProduct(p) {
+    var token = ++pmToken;
+    hideResults();
+    pmTitle.textContent = p.name;
+    pmSub.textContent = p.sku + (p.brand ? ' · ' + p.brand : '');
+    pmBody.textContent = '';
+    pmBody.appendChild(el('div', 'pm-note', 'در حال بارگذاری...'));
+    pmVariants = []; pmInputs = {};
+    updateModalTotal();
+    pm.hidden = false;
+    document.body.classList.add('modal-open');
+    fetch(VARIANTS_URL.replace(/0\/$/, p.id + '/'), {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    }).then(function (r) {
+      if (!r.ok) throw new Error('http ' + r.status);
+      return r.json();
+    }).then(function (d) {
+      if (token !== pmToken) return;
+      buildMatrix(d.variants || []);
+    }).catch(function () {
+      if (token !== pmToken) return;
+      pmBody.textContent = '';
+      pmBody.appendChild(el('div', 'pm-note err', 'خطا در دریافت ترکیب‌های این محصول.'));
+    });
+  }
+
+  function buildMatrix(vs) {
+    pmBody.textContent = '';
+    if (!vs.length) { pmBody.appendChild(el('div', 'pm-note', 'این محصول ترکیب فعالی ندارد.')); return; }
+    pmVariants = vs; pmInputs = {};
+
+    var colors = {}, sizes = {}, byKey = {};
+    vs.forEach(function (v) {
+      colors[v.color_id] = { id: v.color_id, name: v.color, hex: v.hex };
+      sizes[v.size_id] = { id: v.size_id, name: v.size, order: v.size_order };
+      byKey[v.color_id + '_' + v.size_id] = v;
+    });
+    var cl = Object.keys(colors).map(function (k) { return colors[k]; })
+      .sort(function (a, b) { return a.name.localeCompare(b.name, 'fa'); });
+    var sl = Object.keys(sizes).map(function (k) { return sizes[k]; })
+      .sort(function (a, b) { return (a.order - b.order) || a.name.localeCompare(b.name); });
+
+    pmBody.appendChild(el('p', 'pm-lead',
+      'تعداد هر رنگ و سایز را وارد کنید؛ خانه‌ی خالی یعنی اضافه نمی‌شود.' + (IS_OUT ? ' سقف هر خانه موجودی آن است.' : '')));
+
+    var wrap = el('div', 'pm-scroll');
+    var table = el('table', 'pm-matrix');
+    var thead = el('thead'), hr = el('tr');
+    hr.appendChild(el('th', 'corner', 'رنگ / سایز'));
+    sl.forEach(function (s) { hr.appendChild(el('th', null, s.name)); });
+    thead.appendChild(hr); table.appendChild(thead);
+
+    var tb = el('tbody');
+    cl.forEach(function (c) {
+      var tr = el('tr');
+      var th = el('th', 'row-head'); th.appendChild(swatch(c.hex)); th.appendChild(document.createTextNode(c.name));
+      tr.appendChild(th);
+      sl.forEach(function (s) {
+        var v = byKey[c.id + '_' + s.id];
+        var td = el('td', 'pm-cell');
+        if (!v) { td.className += ' none'; td.textContent = '—'; tr.appendChild(td); return; }
+        var dis = IS_OUT && v.stock <= 0;
+        var inp = el('input', 'pm-qty');
+        inp.type = 'number'; inp.min = '0'; inp.placeholder = '0'; inp.setAttribute('inputmode', 'numeric');
+        inp.setAttribute('aria-label', c.name + ' / ' + s.name);
+        if (IS_OUT) inp.max = String(v.stock);
+        if (dis) inp.disabled = true;
+        inp.addEventListener('input', function () {
+          var n = parseInt(normalize(inp.value), 10);
+          if (!isNaN(n)) {
+            if (n < 0) inp.value = '';
+            else if (IS_OUT && n > v.stock) inp.value = String(v.stock);
+          }
+          updateModalTotal();
+        });
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addFromModal(); } });
+        inp.addEventListener('focus', function () { inp.select(); });
+        pmInputs[v.id] = inp;
+        td.appendChild(inp);
+        td.appendChild(el('small', stockClass(v), dis ? 'ناموجود' : 'موجودی ' + v.stock));
+        var ex = find(v.id);
+        if (ex) td.appendChild(el('small', 'pm-in', 'در فاکتور: ' + ex.qty));
+        tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb); wrap.appendChild(table); pmBody.appendChild(wrap);
+
+    for (var k in pmInputs) { if (!pmInputs[k].disabled) { pmInputs[k].focus(); break; } }
+    updateModalTotal();
+  }
+
+  function addFromModal() {
+    var kinds = 0, total = 0, lastId = null;
+    pmVariants.forEach(function (v) {
+      var inp = pmInputs[v.id];
+      if (!inp || inp.disabled) return;
+      var n = parseInt(normalize(inp.value), 10) || 0;
+      if (n < 1) return;
+      var added = addVariant(v, n);
+      if (added > 0) { kinds++; total += added; lastId = v.id; }
+    });
+    if (!kinds) { beep(false); setStatus('چیزی اضافه نشد؛ تعداد را بررسی کنید.', 'warn'); return; }
+    doneBox.hidden = true;
+    closeModal(true);
+    renderLines(lastId);
+    resetInput();
+    beep(true);
+    setStatus(kinds + ' ترکیب (' + total + ' عدد) به فاکتور اضافه شد.', 'ok');
+  }
+
+  /* ---------- invoice lines ---------- */
+  // تعداد واقعاً اضافه‌شده را برمی‌گرداند (در خروج حداکثر تا سقف موجودی)
+  function addVariant(v, n) {
+    var line = find(v.id);
+    if (!line) {
+      if (IS_OUT && v.stock <= 0) return 0;
+      var q = IS_OUT ? Math.min(n, v.stock) : n;
+      lines.unshift({
+        id: v.id, product: v.product, color: v.color, hex: v.hex, size: v.size, sku: v.sku,
+        barcode: v.barcode, stock: v.stock, qty: q, price: v.price, error: ''
+      });
+      return q;
+    }
+    line.stock = v.stock;
+    var room = IS_OUT ? Math.max(0, line.stock - line.qty) : n;
+    var add = Math.min(n, room);
+    line.qty += add; line.error = '';
+    return add;
+  }
+
+  // اسکن بارکد / کد کالا: یک عدد به فاکتور اضافه می‌شود
+  function addItem(v) {
+    doneBox.hidden = true;
+    var existed = !!find(v.id);
+    var added = addVariant(v, 1);
+    if (!added) {
+      beep(false);
+      setStatus(!existed ? '«' + v.product + '» ناموجود است.'
+                         : 'موجودی «' + v.product + '» فقط ' + v.stock + ' عدد است.', existed ? 'warn' : 'error');
+    } else {
+      beep(true);
+      var l = find(v.id);
+      setStatus(existed ? l.product + ' — تعداد: ' + l.qty : v.product + ' به فاکتور اضافه شد.', 'ok');
+    }
+    renderLines(v.id);
+    resetInput();
+  }
 
   function buildLine(l, i) {
     var row = el('div', 'line' + ((l.error || isBad(l)) ? ' bad' : ''));
@@ -483,6 +728,10 @@
     stock.appendChild(el('b', null, String(l.stock)));
     row.appendChild(stock);
 
+    var sumEl = IS_OUT ? el('small', 'l-sum', '') : null;
+    function refreshSum() { if (sumEl) sumEl.textContent = 'جمع: ' + fmt(lineTotal(l)); }
+    refreshSum();
+
     var q = el('div', 'l-qty');
     var minus = el('button', 'qbtn', '−'); minus.type = 'button'; minus.setAttribute('aria-label', 'کم کردن');
     var plus = el('button', 'qbtn', '+'); plus.type = 'button'; plus.setAttribute('aria-label', 'زیاد کردن');
@@ -498,6 +747,7 @@
     inp.addEventListener('input', function () {
       l.qty = parseInt(normalize(inp.value), 10) || 0; l.error = '';
       row.classList.toggle('bad', isBad(l));
+      refreshSum();
       updateTotals();
     });
     inp.addEventListener('change', function () {
@@ -512,6 +762,27 @@
     q.appendChild(minus); q.appendChild(inp); q.appendChild(plus);
     row.appendChild(q);
 
+    if (IS_OUT) {
+      var pw = el('div', 'l-price');
+      var pinp = el('input');
+      pinp.type = 'number'; pinp.min = '0'; pinp.step = '1'; pinp.setAttribute('inputmode', 'numeric');
+      pinp.value = priceOk(l) ? l.price : '';
+      pinp.setAttribute('aria-label', 'قیمت واحد ' + l.product);
+      pinp.addEventListener('input', function () {
+        var n = parseInt(normalize(pinp.value), 10);
+        l.price = isNaN(n) ? null : n; l.error = '';
+        row.classList.toggle('bad', isBad(l));
+        refreshSum();
+        updateTotals();
+      });
+      pinp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); pinp.blur(); input.focus(); }
+      });
+      pinp.addEventListener('focus', function () { pinp.select(); });
+      pw.appendChild(pinp); pw.appendChild(sumEl);
+      row.appendChild(pw);
+    }
+
     var del = el('button', 'l-del', '×'); del.type = 'button'; del.setAttribute('aria-label', 'حذف ' + l.product);
     del.addEventListener('click', function () {
       lines = lines.filter(function (x) { return x !== l; });
@@ -521,6 +792,7 @@
 
     if (l.error) row.appendChild(el('div', 'l-err', l.error));
     else if (IS_OUT && l.qty > l.stock) row.appendChild(el('div', 'l-err', 'تعداد بیشتر از موجودی (' + l.stock + ') است.'));
+    else if (IS_OUT && !priceOk(l)) row.appendChild(el('div', 'l-err', 'قیمت واحد را وارد کنید.'));
     return row;
   }
 
@@ -537,10 +809,12 @@
   }
 
   function updateTotals() {
-    var n = lines.length, q = 0;
-    lines.forEach(function (l) { q += (l.qty || 0); });
+    var n = lines.length, q = 0, p = 0;
+    lines.forEach(function (l) { q += (l.qty || 0); p += lineTotal(l); });
     $('tLines').textContent = n; $('tQty').textContent = q;
     $('mLines').textContent = n; $('mQty').textContent = q;
+    if ($('tPrice')) $('tPrice').textContent = fmt(p);
+    if ($('mPrice')) $('mPrice').textContent = fmt(p);
     countBadge.textContent = n + ' قلم';
     submitBtn.disabled = mSubmit.disabled = !(n > 0) || busy;
   }
@@ -557,16 +831,25 @@
     if (busy || !lines.length) return;
     if (!whSel.value) { setStatus('ابتدا انبار را انتخاب کنید.', 'error'); beep(false); whSel.focus(); whSel.scrollIntoView({ block: 'center' }); return; }
     var bad = lines.filter(isBad);
-    if (bad.length) { setStatus('تعداد برخی اقلام نامعتبر یا بیشتر از موجودی است.', 'error'); beep(false); renderLines(); return; }
+    if (bad.length) {
+      setStatus(IS_OUT ? 'تعداد یا قیمت برخی اقلام نامعتبر است.' : 'تعداد برخی اقلام نامعتبر است.', 'error');
+      beep(false); renderLines(); return;
+    }
 
-    var snapshot = lines.map(function (l) { return { product: l.product, color: l.color, size: l.size, sku: l.sku, qty: l.qty }; });
+    var snapshot = lines.map(function (l) {
+      return { product: l.product, color: l.color, size: l.size, sku: l.sku, qty: l.qty, price: l.price };
+    });
     setBusy(true); setStatus('در حال ثبت فاکتور...', '');
     fetch(SUBMIT_URL, {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
       body: JSON.stringify({
         type: MOVE, warehouse: whSel.value, note: noteEl.value,
-        items: lines.map(function (l) { return { variant: l.id, quantity: l.qty }; })
+        items: lines.map(function (l) {
+          var it = { variant: l.id, quantity: l.qty };
+          if (IS_OUT) it.price = l.price;
+          return it;
+        })
       })
     }).then(function (r) {
       return r.text().then(function (t) {
@@ -599,7 +882,8 @@
     beep(true);
     buildPrint(d, snapshot);
     $('doneCode').textContent = d.code;
-    $('doneInfo').textContent = d.lines + ' قلم، مجموع ' + d.quantity + ' عدد — انبار: ' + d.warehouse;
+    $('doneInfo').textContent = d.lines + ' قلم، مجموع ' + d.quantity + ' عدد' +
+      (d.type === 'out' ? ' — مبلغ کل: ' + fmt(d.total) + ' تومان' : '') + ' — انبار: ' + d.warehouse;
     lines = []; noteEl.value = ''; renderLines();
     setStatus('', '');
     doneBox.hidden = false;
@@ -607,6 +891,7 @@
   }
 
   function buildPrint(d, snapshot) {
+    var withPrice = d.type === 'out';
     var ps = $('printSheet'); ps.textContent = '';
     ps.appendChild(el('h1', null, (d.type === 'out' ? 'فاکتور خروج از انبار' : 'فاکتور ورود به انبار')));
     var meta = el('div', 'meta');
@@ -615,16 +900,21 @@
     meta.appendChild(el('span', null, 'انبار: ' + d.warehouse));
     ps.appendChild(meta);
     var tbl = el('table'), thead = el('thead'), hr = el('tr');
-    ['#', 'کالا', 'رنگ / سایز', 'کد کالا', 'تعداد'].forEach(function (h) { hr.appendChild(el('th', null, h)); });
+    var heads = ['#', 'کالا', 'رنگ / سایز', 'کد کالا', 'تعداد'];
+    if (withPrice) heads.push('قیمت واحد (تومان)', 'جمع (تومان)');
+    heads.forEach(function (h) { hr.appendChild(el('th', null, h)); });
     thead.appendChild(hr); tbl.appendChild(thead);
     var tb = el('tbody');
     snapshot.forEach(function (s, i) {
       var tr = el('tr');
-      [String(i + 1), s.product, s.color + ' / ' + s.size, s.sku, String(s.qty)].forEach(function (t) { tr.appendChild(el('td', null, t)); });
+      var cells = [String(i + 1), s.product, s.color + ' / ' + s.size, s.sku, String(s.qty)];
+      if (withPrice) cells.push(fmt(s.price), fmt((s.price || 0) * s.qty));
+      cells.forEach(function (t) { tr.appendChild(el('td', null, t)); });
       tb.appendChild(tr);
     });
     tbl.appendChild(tb); ps.appendChild(tbl);
-    ps.appendChild(el('p', 'sum', 'جمع کل: ' + d.quantity + ' عدد در ' + d.lines + ' قلم'));
+    ps.appendChild(el('p', 'sum', 'جمع کل: ' + d.quantity + ' عدد در ' + d.lines + ' قلم' +
+      (withPrice ? ' — مبلغ کل: ' + fmt(d.total) + ' تومان' : '')));
   }
 
   /* ---------- events ---------- */
@@ -641,11 +931,17 @@
   });
   // اگر فوکوس روی بدنه‌ی صفحه بود و بارکدخوان شروع به تایپ کرد، کاراکترها وارد کادر جستجو شوند
   document.addEventListener('keydown', function (e) {
+    if (!pm.hidden) { if (e.key === 'Escape') closeModal(); return; }
     var t = e.target;
     if (t && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(t.tagName)) return;
     if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
     input.focus();
   });
+
+  $('pmClose').addEventListener('click', function () { closeModal(); });
+  $('pmCancel').addEventListener('click', function () { closeModal(); });
+  pm.addEventListener('mousedown', function (e) { if (e.target === pm) closeModal(); });
+  pmAdd.addEventListener('click', addFromModal);
 
   clearAll.addEventListener('click', function () {
     if (!lines.length || !window.confirm('همه‌ی اقلام فاکتور پاک شود؟')) return;
