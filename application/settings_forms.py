@@ -6,7 +6,7 @@ from django.db import transaction
 from django.contrib.auth.password_validation import validate_password
 
 from . import permissions
-from .models import Color, Size, Warehouse , Category , Product
+from .models import Color, Size, Warehouse , Category , Product , StoreSettings
 
 User = get_user_model()
 HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -55,6 +55,19 @@ class SizeForm(forms.ModelForm):
         if qs.exists():
             raise forms.ValidationError("این سایز قبلاً ثبت شده است.")
         return name
+
+
+class StoreSettingsForm(forms.ModelForm):
+    class Meta:
+        model = StoreSettings
+        fields = ["store_name"]
+        widgets = {
+            "store_name": forms.TextInput(attrs={"placeholder": "مثلاً فروشگاه پوشاک فیبوناچی", "maxlength": 120}),
+        }
+        help_texts = {"store_name": "این نام بالای فاکتور چاپی نوشته می‌شود. خالی بگذارید تا چیزی چاپ نشود."}
+
+    def clean_store_name(self):
+        return " ".join(self.cleaned_data["store_name"].split())
 
 
 class WarehouseForm(forms.ModelForm):

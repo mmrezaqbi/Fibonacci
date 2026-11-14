@@ -12,6 +12,9 @@
 پس منطق به‌روزرسانی موجودی همان قبلی است. برای اینکه اقلام یک فاکتور در گزارش‌ها
 قابل پیگیری باشند، یک «شماره‌ی سند» در ابتدای توضیحات (note) هر تراکنش نوشته می‌شود.
 قیمت واحد هر قلم (در فاکتور خروج) در StockTransaction.unit_price ذخیره می‌شود.
+سربرگ فاکتور (شماره، انبار، نام و موبایل خریدار) در مدل Invoice نگه‌داری می‌شود و هر تراکنش به آن وصل است.
+
+  invoice_detail   -> نمایش و چاپ دوباره‌ی یک فاکتور ثبت‌شده (از گزارش فاکتورها)
 """
 import json
 import uuid
@@ -26,7 +29,8 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from .models import Product, ProductVariant, StockTransaction, Warehouse
+from .invoice_utils import BUYER_NAME_MAX, clean_buyer_name, is_valid_mobile, normalize_phone
+from .models import Invoice, Product, ProductVariant, StockTransaction, StoreSettings, Warehouse
 from .reports import _jalali_stamp
 
 MAX_LINES = 200
@@ -245,6 +249,18 @@ def invoice_submit(request):
         if price is not None:
             prices[vid] = price
 
+    # مشخصات خریدار فقط برای فاکتور خروج گرفته می‌شود و پر کردن هر دو فیلد الزامی است
+    buyer_name, buyer_phone = "", ""
+    if kind == StockTransaction.Type.OUT:
+        buyer_name = clean_buyer_name(payload.get("buyer_name"))
+        buyer_phone = normalize_phone(payload.get("buyer_phone"))
+        if not buyer_name:
+            return _fail("نام خریدار را وارد کنید.")
+        if len(buyer_name) > BUYER_NAME_MAX:
+            return _fail("نام خریدار حداکثر %d حرف می‌تواند باشد." % BUYER_NAME_MAX)
+        if not is_valid_mobile(buyer_phone):
+            return _fail("شماره موبایل خریدار نامعتبر است (مثال: 09123456789).")
+
     code = f"F{timezone.localtime():%y%m%d}-{uuid.uuid4().hex[:5].upper()}"
     label = "فاکتور خروج" if movement == "out" else "فاکتور ورود"
     user_note = str(payload.get("note") or "").strip()
@@ -273,12 +289,19 @@ def invoice_submit(request):
             if errors:
                 raise _InvoiceError(errors)
 
+            invoice = Invoice.objects.create(
+                code=code, type=kind, warehouse=warehouse,
+                buyer_name=buyer_name, buyer_phone=buyer_phone,
+                note=user_note[:Invoice._meta.get_field("note").max_length],
+                created_by=request.user,
+            )
+
             for vid in ids:
                 v = locked[vid]
                 StockTransaction(
                     variant=v, warehouse=warehouse, type=kind,
                     quantity=wanted[vid], unit_price=prices.get(vid),
-                    note=note, created_by=request.user,
+                    note=note, created_by=request.user, invoice=invoice,
                 ).save()
                 v.refresh_from_db(fields=["stock"])
                 done.append({
@@ -298,6 +321,41 @@ def invoice_submit(request):
         "quantity": sum(d["quantity"] for d in done),
         "total": sum(d["quantity"] * (d["price"] or 0) for d in done),
         "warehouse": warehouse.name,
-        "date": _jalali_stamp(timezone.now()),
+        "store_name": StoreSettings.load().store_name,
+        "buyer_name": buyer_name,
+        "buyer_phone": buyer_phone,
+        "date": _jalali_stamp(invoice.created_at),
         "items": done,
+    })
+
+
+# ---------------------------------------------------------------------------
+# نمایش / چاپ دوباره‌ی فاکتور ثبت‌شده
+# ---------------------------------------------------------------------------
+@login_required
+def invoice_detail(request, pk):
+    invoice = get_object_or_404(
+        Invoice.objects.select_related("warehouse", "created_by"), pk=pk
+    )
+    rows = []
+    total_qty = total_amount = 0
+    transactions = (
+        invoice.transactions
+        .select_related("variant__product", "variant__color", "variant__size")
+        .order_by("variant__product__name", "variant__color__name", "variant__size__sort_order", "pk")
+    )
+    for t in transactions:
+        line_total = t.quantity * (t.unit_price or 0)
+        total_qty += t.quantity
+        total_amount += line_total
+        rows.append({"t": t, "line_total": line_total})
+
+    return render(request, "invoice_detail.html", {
+        "invoice": invoice,
+        "is_out": invoice.type == StockTransaction.Type.OUT,
+        "rows": rows,
+        "total_qty": total_qty,
+        "total_amount": total_amount,
+        "store_name": StoreSettings.load().store_name,
+        "created_label": _jalali_stamp(invoice.created_at),
     })

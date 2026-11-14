@@ -9,8 +9,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.db.models.functions import Coalesce
 from . import permissions
-from .models import Color, Size, Warehouse , Product , StockTransaction 
-from .settings_forms import ColorForm, SizeForm, UserCreateForm, UserEditForm, WarehouseForm , ProductEditForm , ProductDeleteForm
+from .models import Color, Size, Warehouse , Product , StockTransaction , StoreSettings
+from .settings_forms import ColorForm, SizeForm, UserCreateForm, UserEditForm, WarehouseForm , ProductEditForm , ProductDeleteForm , StoreSettingsForm
 
 User = get_user_model()
 admin_only = permissions.role_required(permissions.ADMIN)
@@ -41,6 +41,22 @@ for _cfg in SIMPLE.values():
 @admin_only
 def settings_index(request):
     return redirect("application:color_list")
+
+
+@admin_only
+def store_settings(request):
+    """نام فروشگاه (بالای فاکتور چاپی) را اضافه یا ویرایش می‌کند."""
+    store = StoreSettings.load()
+    form = StoreSettingsForm(request.POST or None, instance=store)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "اطلاعات فروشگاه ذخیره شد.")
+        return redirect("application:store_settings")
+    return render(request, "settings_form.html", {
+        "form": form, "title": "اطلاعات فروشگاه",
+        "lead": "نام فروشگاه روی بالای فاکتورهای چاپی نمایش داده می‌شود.",
+        "submit": "ذخیره", "cancel_url": reverse("application:store_settings"), "section": "store",
+    })
 
 
 @admin_only

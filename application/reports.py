@@ -2,16 +2,18 @@ import csv
 
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, IntegerField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
 from .dates import parse_user_date, to_jalali_string
-from .models import Category, Product, ProductVariant, StockTransaction, Warehouse
+from .invoice_utils import invoice_search_q
+from .models import Category, Invoice, Product, ProductVariant, StockTransaction, Warehouse
 
 TX_PAGE_SIZE = 25
+INVOICE_PAGE_SIZE = 25
 STOCK_PAGE_SIZE = 30
 
 
@@ -96,6 +98,9 @@ def report_transactions(request):
             | Q(variant__product__sku__icontains=q)
             | Q(variant__sku__icontains=q)
             | Q(note__icontains=q)
+            | Q(invoice__code__icontains=q)
+            | Q(invoice__buyer_name__icontains=q)
+            | Q(invoice__buyer_phone__icontains=q)
         )
     if date_from:
         qs = qs.filter(created_at__date__gte=date_from)
@@ -262,3 +267,80 @@ def report_stock(request):
         "has_filters": any([q, category, gender, status, include_inactive]),
     })
     return render(request, "report_stock.html", context)
+
+
+# ---------------------------------------------------------------------------
+# گزارش فاکتورها
+# ---------------------------------------------------------------------------
+_MONEY = DecimalField(max_digits=20, decimal_places=0)
+
+
+@login_required
+def report_invoices(request):
+    """فهرست فاکتورهای ورود و خروج؛ جستجو بر اساس شماره فاکتور، موبایل یا نام خریدار."""
+    q = request.GET.get("q", "").strip()
+    raw_from = request.GET.get("date_from", "").strip()
+    raw_to = request.GET.get("date_to", "").strip()
+    date_from = parse_user_date(raw_from)
+    date_to = parse_user_date(raw_to)
+    date_error = bool((raw_from and not date_from) or (raw_to and not date_to))
+    itype = request.GET.get("type", "").strip()
+    warehouse = request.GET.get("warehouse", "").strip()
+
+    base = Invoice.objects.all()
+    if q:
+        base = base.filter(invoice_search_q(q))
+    if date_from:
+        base = base.filter(created_at__date__gte=date_from)
+    if date_to:
+        base = base.filter(created_at__date__lte=date_to)
+    if itype in StockTransaction.Type.values:
+        base = base.filter(type=itype)
+    if warehouse.isdigit():
+        base = base.filter(warehouse_id=int(warehouse))
+
+    line_amount = ExpressionWrapper(
+        F("transactions__quantity") * Coalesce("transactions__unit_price", Value(0), output_field=_MONEY),
+        output_field=_MONEY,
+    )
+    qs = (
+        base.select_related("warehouse", "created_by")
+        .annotate(
+            n_lines=Count("transactions"),
+            qty_sum=Coalesce(Sum("transactions__quantity"), Value(0), output_field=IntegerField()),
+            amount=Coalesce(Sum(line_amount), Value(0), output_field=_MONEY),
+        )
+        .order_by("-created_at", "-pk")
+    )
+
+    counts = base.aggregate(
+        count=Count("pk"),
+        n_out=Count("pk", filter=Q(type=StockTransaction.Type.OUT)),
+        n_in=Count("pk", filter=Q(type=StockTransaction.Type.IN)),
+    )
+    out_amount = StockTransaction.objects.filter(
+        invoice__in=base.values("pk"), type=StockTransaction.Type.OUT,
+    ).aggregate(
+        total=Sum(ExpressionWrapper(
+            F("quantity") * Coalesce("unit_price", Value(0), output_field=_MONEY), output_field=_MONEY,
+        ))
+    )["total"] or 0
+    summary = {
+        "count": counts["count"], "out": counts["n_out"], "in": counts["n_in"], "out_amount": out_amount,
+    }
+
+    context = _paginate(request, qs, INVOICE_PAGE_SIZE)
+    context.update({
+        "summary": summary,
+        "warehouses": Warehouse.objects.all(),
+        "filters": {
+            "q": q,
+            "date_from": to_jalali_string(date_from) if date_from else raw_from,
+            "date_to": to_jalali_string(date_to) if date_to else raw_to,
+            "type": itype,
+            "warehouse": warehouse,
+        },
+        "date_error": date_error,
+        "has_filters": any([q, raw_from, raw_to, itype, warehouse]),
+    })
+    return render(request, "report_invoices.html", context)

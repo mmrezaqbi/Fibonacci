@@ -128,6 +128,7 @@
 {% block content %}
 <nav class="tabs" aria-label="گزارش‌ها">
   <a href="{% url 'application:report_transactions' %}" class="{% if request.resolver_match.url_name == 'report_transactions' %}active{% endif %}">تراکنش‌های ورود و خروج</a>
+  <a href="{% url 'application:report_invoices' %}" class="{% if request.resolver_match.url_name == 'report_invoices' or request.resolver_match.url_name == 'invoice_detail' %}active{% endif %}">فاکتورها</a>
   <a href="{% url 'application:report_stock' %}" class="{% if request.resolver_match.url_name == 'report_stock' %}active{% endif %}">موجودی انبار</a>
 </nav>
 

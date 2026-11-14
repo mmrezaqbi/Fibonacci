@@ -1,0 +1,130 @@
+{% extends "report_base.html" %}
+{% load jalali_tags %}
+
+{% block title %}گزارش فاکتورها | سامانه انبارداری{% endblock %}
+{% block page_subtitle %}جستجوی فاکتورها بر اساس شماره فاکتور، شماره موبایل یا نام خریدار{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  @media (max-width: 700px) {
+    .filters .f:nth-child(n+2):nth-child(-n+5) { flex: 1 1 calc(50% - 6px); }
+  }
+  @media (max-width: 400px) {
+    .filters .f:nth-child(n+2):nth-child(-n+5) { flex: 1 1 100%; }
+  }
+  table.report.invoices { min-width: 980px; }
+  .ltr { direction: ltr; unicode-bidi: embed; }
+</style>
+{% endblock %}
+
+{% block report_content %}
+<form method="get" class="card filters" role="search">
+  <div class="f grow">
+    <label class="t" for="f-q">جستجو</label>
+    <input type="search" id="f-q" name="q" value="{{ filters.q }}" placeholder="شماره فاکتور، شماره موبایل یا نام خریدار..." autocomplete="off">
+  </div>
+  <div class="f">
+    <label class="t" for="f-from">از تاریخ (شمسی)</label>
+    <input type="text" id="f-from" name="date_from" value="{{ filters.date_from }}"
+           placeholder="1405/08/01" dir="ltr" inputmode="numeric" maxlength="10" autocomplete="off">
+  </div>
+  <div class="f">
+    <label class="t" for="f-to">تا تاریخ (شمسی)</label>
+    <input type="text" id="f-to" name="date_to" value="{{ filters.date_to }}"
+           placeholder="1405/08/30" dir="ltr" inputmode="numeric" maxlength="10" autocomplete="off">
+  </div>
+  <div class="f">
+    <label class="t" for="f-type">نوع</label>
+    <select id="f-type" name="type">
+      <option value="">ورود و خروج</option>
+      <option value="in"  {% if filters.type == 'in' %}selected{% endif %}>فقط ورود</option>
+      <option value="out" {% if filters.type == 'out' %}selected{% endif %}>فقط خروج</option>
+    </select>
+  </div>
+  <div class="f">
+    <label class="t" for="f-wh">انبار</label>
+    <select id="f-wh" name="warehouse">
+      <option value="">همه انبارها</option>
+      {% for w in warehouses %}
+        <option value="{{ w.pk }}" {% if filters.warehouse == w.pk|stringformat:"s" %}selected{% endif %}>{{ w.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="btns">
+    <button type="submit" class="btn-sm">اعمال فیلتر</button>
+    {% if has_filters %}<a href="{% url 'application:report_invoices' %}" class="btn-sm ghost">پاک کردن</a>{% endif %}
+  </div>
+  {% if date_error %}
+    <p style="flex: 1 1 100%; color: var(--danger); font-size: .82rem;">
+      تاریخ نامعتبر است و نادیده گرفته شد. فرمت درست: سال/ماه/روز مثل 1405/08/16
+    </p>
+  {% endif %}
+</form>
+
+<section class="stats">
+  <div class="card stat">
+    <span>تعداد فاکتور</span>
+    <b>{{ summary.count }}</b>
+    <small>مطابق فیلتر فعلی</small>
+  </div>
+  <div class="card stat out">
+    <span>فاکتور خروج</span>
+    <b>{{ summary.out }}</b>
+    <small>فاکتور</small>
+  </div>
+  <div class="card stat in">
+    <span>فاکتور ورود</span>
+    <b>{{ summary.in }}</b>
+    <small>فاکتور</small>
+  </div>
+  <div class="card stat">
+    <span>جمع مبلغ فاکتورهای خروج</span>
+    <b>{{ summary.out_amount|floatformat:"0g" }}</b>
+    <small>تومان</small>
+  </div>
+</section>
+
+<section class="card panel">
+  <div class="panel-head">
+    <h2>لیست فاکتورها <small>({{ total_count }} مورد)</small></h2>
+  </div>
+
+  <div class="table-scroll">
+    <table class="report invoices">
+      <thead>
+        <tr>
+          <th>شماره فاکتور</th><th>تاریخ</th><th>نوع</th><th>نام خریدار</th><th>موبایل خریدار</th>
+          <th>انبار</th><th class="num">قلم</th><th class="num">تعداد</th><th class="num">مبلغ (تومان)</th>
+          <th>ثبت‌کننده</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in page_obj %}
+          <tr>
+            <td class="ltr"><a href="{% url 'application:invoice_detail' inv.pk %}">{{ inv.code }}</a></td>
+            <td>{{ inv.created_at|jdatetime }}</td>
+            <td>
+              {% if inv.type == 'in' %}<span class="badge b-in">ورود</span>{% else %}<span class="badge b-out">خروج</span>{% endif %}
+            </td>
+            <td>{{ inv.buyer_name|default:"—" }}</td>
+            <td class="ltr" style="text-align: right;">{{ inv.buyer_phone|default:"—" }}</td>
+            <td>{{ inv.warehouse }}</td>
+            <td class="num">{{ inv.n_lines }}</td>
+            <td class="num">{{ inv.qty_sum }}</td>
+            <td class="num">{% if inv.type == 'out' %}{{ inv.amount|floatformat:"0g" }}{% else %}—{% endif %}</td>
+            <td>{{ inv.created_by.username|default:"—" }}</td>
+            <td><a href="{% url 'application:invoice_detail' inv.pk %}">مشاهده / چاپ</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="11" class="empty">
+            {% if has_filters %}فاکتوری با این فیلترها پیدا نشد.{% else %}هنوز فاکتوری ثبت نشده است.{% endif %}
+          </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% include "includes/pager.html" %}
+</section>
+{% endblock %}

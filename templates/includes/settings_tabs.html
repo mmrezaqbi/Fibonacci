@@ -1,4 +1,5 @@
 <nav class="tabs" aria-label="تنظیمات">
+  <a href="{% url 'application:store_settings' %}" class="{% if section == 'store' %}active{% endif %}">فروشگاه</a>
   <a href="{% url 'application:color_list' %}" class="{% if section == 'color' %}active{% endif %}">رنگ‌ها</a>
   <a href="{% url 'application:size_list' %}" class="{% if section == 'size' %}active{% endif %}">سایزها</a>
   <a href="{% url 'application:warehouse_settings' %}" class="{% if section == 'warehouse' %}active{% endif %}">انبارها</a>

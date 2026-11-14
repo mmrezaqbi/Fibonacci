@@ -1,0 +1,106 @@
+{% extends "home-base.html" %}
+{% load jalali_tags %}
+
+{% block title %}فاکتور {{ invoice.code }} | سامانه انبارداری{% endblock %}
+{% block page_title %}{% if is_out %}فاکتور خروج{% else %}فاکتور ورود{% endif %}{% endblock %}
+{% block page_subtitle %}شماره فاکتور: {{ invoice.code }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .ltr { direction: ltr; unicode-bidi: embed; }
+  .inv-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .btn-sm {
+    border: 0; cursor: pointer; font: inherit; font-size: .9rem; font-weight: 600; color: #fff; min-height: 44px;
+    padding: 10px 22px; border-radius: 12px; display: inline-flex; align-items: center;
+    background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  }
+  .btn-sm.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); font-weight: 500; }
+  .btn-sm.ghost:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
+
+  .print-sheet { padding: 24px; }
+  .print-sheet .store { text-align: center; font-size: 1.5rem; font-weight: 800; margin-bottom: 6px; }
+  .print-sheet h1 { font-size: 1.15rem; text-align: center; margin-bottom: 14px; }
+  .print-sheet .meta { display: flex; flex-wrap: wrap; gap: 6px 28px; margin-bottom: 16px; color: var(--muted); font-size: .9rem; }
+  .print-sheet .meta b { color: var(--text); font-weight: 600; }
+  .print-sheet .table-wrap { overflow-x: auto; }
+  .print-sheet table { width: 100%; border-collapse: collapse; font-size: .9rem; min-width: 560px; }
+  .print-sheet th { text-align: right; color: var(--muted); font-weight: 500; padding: 0 10px 10px; white-space: nowrap; }
+  .print-sheet td { padding: 11px 10px; border-top: 1px solid var(--border); }
+  .print-sheet td.num, .print-sheet th.num { text-align: left; font-variant-numeric: tabular-nums; }
+  .print-sheet .sum { margin-top: 14px; font-weight: 700; }
+  .print-sheet .note { margin-top: 8px; color: var(--muted); font-size: .86rem; }
+  .swatch { display: inline-block; width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .35); vertical-align: middle; margin-left: 6px; }
+
+  @media (max-width: 700px) { .print-sheet { padding: 16px 14px; } }
+
+  @media print {
+    @page { margin: 12mm; }
+    body { background: #fff !important; color: #000 !important; }
+    body::before, body::after { display: none !important; }
+    .sidebar, .overlay, .topbar, .messages, .no-print { display: none !important; }
+    .main { margin: 0 !important; padding: 0 !important; }
+    .card.print-sheet { background: #fff !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; color: #000; font-size: 12px; }
+    .print-sheet .store { font-size: 22px; }
+    .print-sheet h1 { font-size: 16px; }
+    .print-sheet .meta, .print-sheet .meta b, .print-sheet .note { color: #000; }
+    .print-sheet table { min-width: 0; }
+    .print-sheet th, .print-sheet td { border: 1px solid #999; padding: 6px 8px; text-align: right; color: #000; }
+    .print-sheet th { background: #eee; }
+    .print-sheet td.num, .print-sheet th.num { text-align: right; }
+    .swatch { display: none; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="inv-actions no-print">
+  <button type="button" class="btn-sm" onclick="window.print()">چاپ فاکتور</button>
+  <a class="btn-sm ghost" href="{% url 'application:report_invoices' %}">بازگشت به گزارش فاکتورها</a>
+</div>
+
+<section class="card print-sheet">
+  {% if store_name %}<div class="store">{{ store_name }}</div>{% endif %}
+  <h1>{% if is_out %}فاکتور خروج از انبار{% else %}فاکتور ورود به انبار{% endif %}</h1>
+
+  <div class="meta">
+    <span>شماره سند: <b class="ltr">{{ invoice.code }}</b></span>
+    <span>تاریخ: <b>{{ invoice.created_at|jdatetime }}</b></span>
+    <span>انبار: <b>{{ invoice.warehouse }}</b></span>
+    {% if is_out %}
+      <span>نام خریدار: <b>{{ invoice.buyer_name|default:"—" }}</b></span>
+      <span>شماره موبایل خریدار: <b class="ltr">{{ invoice.buyer_phone|default:"—" }}</b></span>
+    {% endif %}
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>کالا</th><th>رنگ / سایز</th><th>کد کالا</th><th class="num">تعداد</th>
+          {% if is_out %}<th class="num">قیمت واحد (تومان)</th><th class="num">جمع (تومان)</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ r.t.variant.product.name }}</td>
+            <td><span class="swatch" style="background: {{ r.t.variant.color.hex_code }}"></span>{{ r.t.variant.color.name }} / {{ r.t.variant.size.name }}</td>
+            <td class="ltr" style="text-align: right;">{{ r.t.variant.sku }}</td>
+            <td class="num">{{ r.t.quantity }}</td>
+            {% if is_out %}
+              <td class="num">{% if r.t.unit_price is not None %}{{ r.t.unit_price|floatformat:"0g" }}{% else %}—{% endif %}</td>
+              <td class="num">{{ r.line_total|floatformat:"0g" }}</td>
+            {% endif %}
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" style="text-align: center; color: var(--muted);">این فاکتور قلمی ندارد.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="sum">جمع کل: {{ total_qty }} عدد در {{ rows|length }} قلم{% if is_out %} — مبلغ کل: {{ total_amount|floatformat:"0g" }} تومان{% endif %}</p>
+  {% if invoice.note %}<p class="note">توضیحات: {{ invoice.note }}</p>{% endif %}
+</section>
+{% endblock %}

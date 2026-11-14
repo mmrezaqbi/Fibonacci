@@ -66,7 +66,7 @@ def role_required(level):
                 return redirect_to_login(request.get_full_path())
             if not has_role(request.user, level):
                 messages.error(request, "شما به این بخش دسترسی ندارید.")
-                return redirect("home")
+                return redirect("application:home")
             return view(request, *args, **kwargs)
         return wrapper
     return decorator

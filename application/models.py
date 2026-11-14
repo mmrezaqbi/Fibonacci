@@ -215,6 +215,10 @@ class StockTransaction(models.Model):
         settings.AUTH_USER_MODEL, verbose_name="ثبت‌کننده",
         on_delete=models.SET_NULL, null=True, blank=True, related_name="stock_transactions",
     )
+    invoice = models.ForeignKey(
+        "Invoice", verbose_name="فاکتور", on_delete=models.PROTECT,
+        null=True, blank=True, related_name="transactions",
+    )
     created_at = models.DateTimeField("تاریخ", auto_now_add=True, db_index=True)
 
     class Meta:
@@ -247,6 +251,50 @@ class StockTransaction(models.Model):
                 ProductVariant.objects.filter(pk=variant.pk).update(stock=F("stock") + self.quantity)
 
             super().save(*args, **kwargs)
+
+
+class Invoice(models.Model):
+    """سربرگ فاکتور ورود/خروج. اقلام آن همان StockTransaction هایی هستند که invoice آن‌ها این فاکتور است."""
+
+    code = models.CharField("شماره فاکتور", max_length=30, unique=True)
+    type = models.CharField("نوع", max_length=3, choices=StockTransaction.Type.choices)
+    warehouse = models.ForeignKey(
+        Warehouse, verbose_name="انبار", on_delete=models.PROTECT, related_name="invoices"
+    )
+    buyer_name = models.CharField("نام خریدار", max_length=120, blank=True)
+    buyer_phone = models.CharField("شماره موبایل خریدار", max_length=20, blank=True, db_index=True)
+    note = models.CharField("توضیحات", max_length=255, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="ثبت‌کننده",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="invoices",
+    )
+    created_at = models.DateTimeField("تاریخ", auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "فاکتور"
+        verbose_name_plural = "فاکتورها"
+        ordering = ["-created_at", "-pk"]
+
+    def __str__(self):
+        return f"{self.code} ({self.get_type_display()})"
+
+
+class StoreSettings(models.Model):
+    """اطلاعات فروشگاه (فقط یک ردیف). نام فروشگاه بالای فاکتور چاپی نوشته می‌شود."""
+
+    store_name = models.CharField("نام فروشگاه", max_length=120, blank=True)
+
+    class Meta:
+        verbose_name = "تنظیمات فروشگاه"
+        verbose_name_plural = "تنظیمات فروشگاه"
+
+    def __str__(self):
+        return self.store_name or "تنظیمات فروشگاه"
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
 
 
 # ===========================================================================

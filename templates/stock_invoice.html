@@ -112,13 +112,15 @@
   .inv-side h2 { font-size: 1.02rem; }
   .fld { display: flex; flex-direction: column; gap: 6px; }
   .fld label { font-size: .82rem; color: var(--muted); }
-  .fld select, .fld textarea {
+  .fld select, .fld textarea, .fld input {
     width: 100%; background: var(--input); border: 1px solid var(--border); border-radius: 12px; color: var(--text);
     font: inherit; font-size: .92rem; padding: 11px 12px; outline: none; color-scheme: dark; transition: border-color .2s, box-shadow .2s;
   }
   .fld textarea { resize: vertical; min-height: 70px; }
   .fld select option { background: var(--panel-solid); }
-  .fld select:focus, .fld textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108, 140, 255, .16); }
+  .fld select:focus, .fld textarea:focus, .fld input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108, 140, 255, .16); }
+  .fld input[dir=ltr] { text-align: left; }
+  .fld input::placeholder { color: #565e72; font-size: .86rem; }
   .totals { display: grid; gap: 8px; padding: 14px; border-radius: 12px; background: rgba(255, 255, 255, .03); border: 1px solid var(--border); }
   .totals div { display: flex; justify-content: space-between; font-size: .88rem; color: var(--muted); }
   .totals b { color: var(--text); font-size: 1.05rem; }
@@ -236,7 +238,7 @@
     .res { padding: 12px 10px; }
     .results { max-height: 52vh; }
     .inv-side { padding: 14px; }
-    .fld select, .fld textarea { font-size: 16px; }
+    .fld select, .fld textarea, .fld input { font-size: 16px; }
     .mobile-bar .btn-submit { min-width: 120px; }
 
     .modal-back { padding: 0; align-items: flex-end; }
@@ -254,6 +256,7 @@
     .sidebar, .overlay, .topbar, .messages, .no-print { display: none !important; }
     .main { margin: 0 !important; padding: 0 !important; }
     .print-sheet { display: block !important; color: #000; font-size: 12px; }
+    .print-sheet .store { text-align: center; font-size: 22px; font-weight: 800; margin-bottom: 4px; }
     .print-sheet h1 { font-size: 18px; margin-bottom: 6px; }
     .print-sheet .meta { display: flex; flex-wrap: wrap; gap: 4px 24px; margin-bottom: 12px; color: #333; }
     .print-sheet table { width: 100%; border-collapse: collapse; }
@@ -314,6 +317,16 @@
 
       <aside class="card inv-side">
         <h2>{% if is_out %}مشخصات خروج{% else %}مشخصات ورود{% endif %}</h2>
+        {% if is_out %}
+        <div class="fld">
+          <label for="buyerName">نام خریدار <span style="color: var(--danger)">*</span></label>
+          <input type="text" id="buyerName" maxlength="120" autocomplete="off" placeholder="مثلاً علی رضایی">
+        </div>
+        <div class="fld">
+          <label for="buyerPhone">شماره موبایل خریدار <span style="color: var(--danger)">*</span></label>
+          <input type="tel" id="buyerPhone" maxlength="20" dir="ltr" inputmode="tel" autocomplete="off" placeholder="09123456789">
+        </div>
+        {% endif %}
         <div class="fld">
           <label for="warehouse">انبار <span style="color: var(--danger)">*</span></label>
           <select id="warehouse">
@@ -391,6 +404,7 @@
   var input = $('q'), results = $('results'), statusEl = $('status'), clearQ = $('clearQ');
   var linesEl = $('lines'), emptyEl = $('linesEmpty'), countBadge = $('countBadge'), clearAll = $('clearAll');
   var whSel = $('warehouse'), noteEl = $('note'), soundEl = $('sound');
+  var buyerNameEl = $('buyerName'), buyerPhoneEl = $('buyerPhone');   // فقط در فاکتور خروج هستند
   var submitBtn = $('submitBtn'), mSubmit = $('mSubmit');
   var doneBox = $('done');
   var pm = $('pmodal'), pmTitle = $('pmTitle'), pmSub = $('pmSub'), pmBody = $('pmBody'),
@@ -415,6 +429,14 @@
       .trim();
   }
   function fmt(n) { return (n || 0).toLocaleString('en-US'); }
+  // 09xxxxxxxxx (ارقام فارسی، فاصله، +98 و 0098 هم پذیرفته می‌شود) — مطابق منطق سرور
+  function cleanPhone(s) {
+    var d = normalize(s).replace(/\D/g, '');
+    if (d.indexOf('0098') === 0) d = '0' + d.slice(4);
+    else if (d.length === 12 && d.indexOf('98') === 0) d = '0' + d.slice(2);
+    else if (d.length === 10 && d.charAt(0) === '9') d = '0' + d;
+    return d;
+  }
   function setStatus(msg, type) {
     statusEl.textContent = msg || '';
     statusEl.className = 'status' + (type ? ' ' + type : '');
@@ -830,6 +852,13 @@
   function submit() {
     if (busy || !lines.length) return;
     if (!whSel.value) { setStatus('ابتدا انبار را انتخاب کنید.', 'error'); beep(false); whSel.focus(); whSel.scrollIntoView({ block: 'center' }); return; }
+    var buyerName = '', buyerPhone = '';
+    if (IS_OUT) {
+      buyerName = buyerNameEl.value.replace(/\s+/g, ' ').trim();
+      buyerPhone = cleanPhone(buyerPhoneEl.value);
+      if (!buyerName) { setStatus('نام خریدار را وارد کنید.', 'error'); beep(false); buyerNameEl.focus(); buyerNameEl.scrollIntoView({ block: 'center' }); return; }
+      if (!/^09\d{9}$/.test(buyerPhone)) { setStatus('شماره موبایل خریدار نامعتبر است (مثال: 09123456789).', 'error'); beep(false); buyerPhoneEl.focus(); buyerPhoneEl.scrollIntoView({ block: 'center' }); return; }
+    }
     var bad = lines.filter(isBad);
     if (bad.length) {
       setStatus(IS_OUT ? 'تعداد یا قیمت برخی اقلام نامعتبر است.' : 'تعداد برخی اقلام نامعتبر است.', 'error');
@@ -845,6 +874,7 @@
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
       body: JSON.stringify({
         type: MOVE, warehouse: whSel.value, note: noteEl.value,
+        buyer_name: buyerName, buyer_phone: buyerPhone,
         items: lines.map(function (l) {
           var it = { variant: l.id, quantity: l.qty };
           if (IS_OUT) it.price = l.price;
@@ -883,8 +913,10 @@
     buildPrint(d, snapshot);
     $('doneCode').textContent = d.code;
     $('doneInfo').textContent = d.lines + ' قلم، مجموع ' + d.quantity + ' عدد' +
-      (d.type === 'out' ? ' — مبلغ کل: ' + fmt(d.total) + ' تومان' : '') + ' — انبار: ' + d.warehouse;
+      (d.type === 'out' ? ' — مبلغ کل: ' + fmt(d.total) + ' تومان' : '') + ' — انبار: ' + d.warehouse +
+      (d.type === 'out' && d.buyer_name ? ' — خریدار: ' + d.buyer_name : '');
     lines = []; noteEl.value = ''; renderLines();
+    if (buyerNameEl) { buyerNameEl.value = ''; buyerPhoneEl.value = ''; }
     setStatus('', '');
     doneBox.hidden = false;
     doneBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -893,11 +925,16 @@
   function buildPrint(d, snapshot) {
     var withPrice = d.type === 'out';
     var ps = $('printSheet'); ps.textContent = '';
+    if (d.store_name) ps.appendChild(el('div', 'store', d.store_name));
     ps.appendChild(el('h1', null, (d.type === 'out' ? 'فاکتور خروج از انبار' : 'فاکتور ورود به انبار')));
     var meta = el('div', 'meta');
     meta.appendChild(el('span', null, 'شماره سند: ' + d.code));
     meta.appendChild(el('span', null, 'تاریخ: ' + d.date));
     meta.appendChild(el('span', null, 'انبار: ' + d.warehouse));
+    if (withPrice) {
+      meta.appendChild(el('span', null, 'نام خریدار: ' + (d.buyer_name || '—')));
+      meta.appendChild(el('span', null, 'شماره موبایل خریدار: ' + (d.buyer_phone || '—')));
+    }
     ps.appendChild(meta);
     var tbl = el('table'), thead = el('thead'), hr = el('tr');
     var heads = ['#', 'کالا', 'رنگ / سایز', 'کد کالا', 'تعداد'];
