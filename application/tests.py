@@ -1,13 +1,16 @@
+import io
 import json
+import zipfile
 
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from .templatetags.money_tags import money
+from .xlsx import build_xlsx
 from .widgets import MoneyInput
 from .invoice_utils import clean_buyer_name, is_valid_mobile, normalize_phone
-from .models import Color, Invoice, Product, ProductVariant, Size, StockTransaction, StoreSettings, Warehouse
+from .models import ActivityLog, Color, Invoice, Product, ProductVariant, Size, StockTransaction, StoreSettings, Warehouse
 
 User = get_user_model()
 
@@ -138,3 +141,105 @@ class InvoiceBuyerTests(TestCase):
         res = self.client.post(reverse("application:store_settings"), {"store_name": "هک"})
         self.assertEqual(res.status_code, 302)
         self.assertEqual(StoreSettings.load().store_name, "")
+
+
+class ReportsTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_user("admin", password="pw", is_superuser=True, is_staff=True)
+        cls.warehouse = Warehouse.objects.create(name="مرکزی")
+        color = Color.objects.create(name="مشکی", code="BLK")
+        size = Size.objects.create(name="M", sort_order=1)
+        cls.product = Product.objects.create(name="پیراهن", sku="SH1", price=100000)
+        cls.variant = ProductVariant.objects.create(product=cls.product, color=color, size=size)
+        StockTransaction(variant=cls.variant, warehouse=cls.warehouse,
+                         type=StockTransaction.Type.IN, quantity=50).save()
+
+    def setUp(self):
+        self.client.force_login(self.admin)
+
+    def _sell(self, qty, price):
+        res = self.client.post(
+            reverse("application:api_invoice_submit"),
+            json.dumps({
+                "type": "out", "warehouse": self.warehouse.pk, "note": "",
+                "buyer_name": "علی رضایی", "buyer_phone": "09121111111",
+                "items": [{"variant": self.variant.pk, "quantity": qty, "price": price}],
+            }),
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200, res.content)
+
+    def test_sales_report_totals(self):
+        self._sell(2, 150000)
+        self._sell(3, 100000)
+        for group in ("day", "month", "product"):
+            res = self.client.get(reverse("application:report_sales"), {"group": group})
+            self.assertEqual(res.status_code, 200)
+            self.assertEqual(res.context["summary"]["qty"], 5)
+            self.assertEqual(res.context["summary"]["amount"], 600000)
+            self.assertEqual(res.context["summary"]["invoices"], 2)
+            self.assertEqual(res.context["summary"]["average"], 300000)
+
+    def test_asset_report_uses_base_price_times_stock(self):
+        res = self.client.get(reverse("application:report_assets"))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.context["summary"]["stock"], 50)
+        self.assertEqual(res.context["summary"]["value"], 5000000)
+        self._sell(10, 999999)  # قیمت فروش در دارایی اثری ندارد، فقط موجودی کم می‌شود
+        res = self.client.get(reverse("application:report_assets"))
+        self.assertEqual(res.context["summary"]["value"], 4000000)
+
+    def test_activity_log_records_login_and_invoice(self):
+        self.client.logout()
+        self.client.login(username="admin", password="pw")
+        self._sell(1, 100000)
+        actions = set(ActivityLog.objects.filter(username="admin").values_list("action", flat=True))
+        self.assertTrue({"login", "invoice_out"} <= actions)
+        res = self.client.get(reverse("application:report_activity"), {"action": "invoice_out"})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.context["summary"]["count"], 1)
+
+    def test_activity_report_is_admin_only(self):
+        viewer = User.objects.create_user("viewer", password="pw")
+        self.client.force_login(viewer)
+        res = self.client.get(reverse("application:report_activity"))
+        self.assertEqual(res.status_code, 302)
+
+
+class ExportAndPrintTests(ReportsTests):
+    REPORTS = ["report_transactions", "report_invoices", "report_stock",
+               "report_sales", "report_assets", "report_activity"]
+
+    def test_xlsx_writer_makes_valid_zip(self):
+        data = build_xlsx([("شیت/۱", ["الف", "ب"], [["=1+1", 5], ["09121111111", None]])])
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            self.assertIsNone(z.testzip())
+            self.assertIn("xl/worksheets/sheet1.xml", z.namelist())
+
+    def test_every_report_exports_xlsx(self):
+        self._sell(2, 150000)
+        for name in self.REPORTS:
+            res = self.client.get(reverse(f"application:{name}"), {"export": "xlsx"})
+            self.assertEqual(res.status_code, 200, name)
+            self.assertIn("spreadsheetml", res["Content-Type"], name)
+            self.assertIn(".xlsx", res["Content-Disposition"], name)
+            with zipfile.ZipFile(io.BytesIO(res.content)) as z:
+                self.assertIsNone(z.testzip(), name)
+
+    def test_export_respects_filters(self):
+        self._sell(2, 150000)
+        res = self.client.get(reverse("application:report_invoices"), {"export": "xlsx", "q": "ناموجود"})
+        with zipfile.ZipFile(io.BytesIO(res.content)) as z:
+            xml = z.read("xl/worksheets/sheet1.xml").decode("utf-8")
+        self.assertNotIn("علی رضایی", xml)
+
+    def test_print_mode_shows_store_name_and_all_rows(self):
+        StoreSettings.objects.update_or_create(pk=1, defaults={"store_name": "فروشگاه فیبوناچی"})
+        for _ in range(3):
+            self._sell(1, 100000)
+        for name in self.REPORTS:
+            res = self.client.get(reverse(f"application:{name}"), {"print": "1"})
+            self.assertEqual(res.status_code, 200, name)
+            self.assertContains(res, "window.print()", msg_prefix=name)
+            self.assertContains(res, "فروشگاه فیبوناچی", msg_prefix=name)

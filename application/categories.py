@@ -14,6 +14,7 @@ from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from .activity import A, log_activity
 from .models import Category, Product
 
 
@@ -62,6 +63,7 @@ def category_list(request):
         form = CategoryForm(request.POST)
         if form.is_valid():
             category = form.save()
+            log_activity(request, A.CATEGORY, f"افزودن دسته‌بندی «{category.name}»")
             messages.success(request, f"دسته‌بندی «{category.name}» اضافه شد.")
             return redirect("application:category_list")
     else:
@@ -83,6 +85,7 @@ def category_edit(request, pk):
         form = CategoryForm(request.POST, instance=category)
         if form.is_valid():
             form.save()
+            log_activity(request, A.CATEGORY, f"ویرایش دسته‌بندی «{category.name}»")
             messages.success(request, "تغییرات دسته‌بندی ذخیره شد.")
             return redirect("application:category_list")
     else:
@@ -111,9 +114,11 @@ def category_delete(request, pk):
             with transaction.atomic():
                 products.update(category=target)
                 category.delete()
+            log_activity(request, A.CATEGORY, f"حذف دسته‌بندی «{name}» (انتقال {count} کالا به «{target.name}»)")
             messages.success(request, f"دسته‌بندی «{name}» حذف شد و {count} کالا به «{target.name}» منتقل شد.")
         else:
             category.delete()
+            log_activity(request, A.CATEGORY, f"حذف دسته‌بندی «{name}»")
             messages.success(request, f"دسته‌بندی «{name}» حذف شد.")
     except ProtectedError:
         messages.error(request, f"«{name}» به رکوردهای دیگری وصل است و حذف نشد.")

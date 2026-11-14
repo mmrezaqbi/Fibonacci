@@ -1,4 +1,5 @@
 {% extends "home-base.html" %}
+{% load access_tags %}
 
 {% block title %}گزارش‌ها | سامانه انبارداری{% endblock %}
 {% block page_title %}گزارش‌ها{% endblock %}
@@ -77,6 +78,13 @@
   .b-out { background: rgba(255, 107, 122, .12); color: var(--danger); }
   .b-low { background: rgba(245, 184, 75, .14); color: var(--warning); }
 
+  .bar { display: block; height: 6px; min-width: 90px; border-radius: 999px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(135deg, var(--primary), var(--primary-2)); }
+  .report-tools { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .report-tools .btn-sm { text-decoration: none; }
+  .report-tools svg, .panel-head svg { width: 16px; height: 16px; margin-left: 6px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .print-head { display: none; }
+  .print-note { color: var(--warning); font-size: .82rem; margin-bottom: 12px; }
   .empty { text-align: center; color: var(--muted); padding: 44px 0 24px; font-size: .92rem; }
 
   .pager { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 22px; flex-wrap: wrap; }
@@ -87,6 +95,35 @@
   .pager a:hover { color: var(--text); border-color: rgba(255, 255, 255, .25); }
   .pager .current { color: #fff; border-color: var(--primary); background: linear-gradient(135deg, rgba(108, 140, 255, .35), rgba(139, 92, 246, .3)); }
   .pager .gap { border: 0; background: none; }
+
+  /* ---------- چاپ ---------- */
+  @media print {
+    @page { size: A4 landscape; margin: 10mm; }
+    html, body { background: #fff !important; }
+    body::before, body::after { display: none !important; }
+    .sidebar, .overlay, .topbar, .messages, .tabs, .filters, .report-tools, .pager, .no-print, .bar { display: none !important; }
+    .main { margin: 0 !important; padding: 0 !important; }
+    .main * { color: #000 !important; background: transparent !important; box-shadow: none !important; text-shadow: none !important; }
+    .card { border: 0 !important; }
+    .print-head { display: block; text-align: center; margin-bottom: 10px; }
+    .print-head .store { font-size: 20px; font-weight: 800; }
+    .print-head .title { font-size: 15px; font-weight: 700; margin-top: 2px; }
+    .print-head .when { font-size: 11px; margin-top: 2px; }
+    .stats { display: flex !important; flex-wrap: wrap; gap: 8px !important; margin-bottom: 10px !important; }
+    .stat { flex: 1 1 22% !important; border: 1px solid #999 !important; padding: 6px 10px !important; border-radius: 6px !important; }
+    .stat b { font-size: 14px !important; margin-top: 2px !important; }
+    .panel { padding: 0 !important; }
+    .panel-head { padding: 6px 0 !important; }
+    .table-scroll { overflow: visible !important; }
+    table.report { min-width: 0 !important; width: 100%; font-size: 10.5px; }
+    .report th, .report td { white-space: normal !important; border: 1px solid #999 !important; padding: 4px 6px !important; position: static !important; max-width: none !important; }
+    .report th { background: #eee !important; font-weight: 700; }
+    .report thead { display: table-header-group; }
+    .report tr { break-inside: avoid; }
+    .report td a { text-decoration: none; }
+    .badge { border: 0 !important; padding: 0 !important; }
+    .swatch { display: none !important; }
+  }
 
   /* ---------- Responsive ---------- */
   @media (max-width: 700px) {
@@ -130,7 +167,31 @@
   <a href="{% url 'application:report_transactions' %}" class="{% if request.resolver_match.url_name == 'report_transactions' %}active{% endif %}">تراکنش‌های ورود و خروج</a>
   <a href="{% url 'application:report_invoices' %}" class="{% if request.resolver_match.url_name == 'report_invoices' or request.resolver_match.url_name == 'invoice_detail' %}active{% endif %}">فاکتورها</a>
   <a href="{% url 'application:report_stock' %}" class="{% if request.resolver_match.url_name == 'report_stock' %}active{% endif %}">موجودی انبار</a>
+  <a href="{% url 'application:report_sales' %}" class="{% if request.resolver_match.url_name == 'report_sales' %}active{% endif %}">فروش</a>
+  <a href="{% url 'application:report_assets' %}" class="{% if request.resolver_match.url_name == 'report_assets' %}active{% endif %}">دارایی انبار</a>
+  {% if request.user|has_role:"admin" %}<a href="{% url 'application:report_activity' %}" class="{% if request.resolver_match.url_name == 'report_activity' %}active{% endif %}">فعالیت کاربران</a>{% endif %}
 </nav>
 
+<div class="print-head">
+  {% if print_store %}<div class="store">{{ print_store }}</div>{% endif %}
+  <div class="title">{{ report_title }}</div>
+  <div class="when">تاریخ چاپ: {{ print_time }}</div>
+</div>
+
+{% if can_export %}
+<div class="report-tools">
+  <a href="?{{ querystring }}{% if querystring %}&{% endif %}export=xlsx" class="btn-sm export">
+    <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+    خروجی Excel
+  </a>
+  <a href="?{{ querystring }}{% if querystring %}&{% endif %}print=1" target="_blank" rel="noopener" class="btn-sm ghost">
+    <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><rect x="4" y="9" width="16" height="9" rx="2"/><path d="M7 14h10v7H7z"/></svg>
+    چاپ گزارش
+  </a>
+</div>
+{% endif %}
+{% if print_truncated %}<p class="print-note no-print">فقط ۵٬۰۰۰ ردیف اول چاپ می‌شود؛ برای تعداد بیشتر فیلتر را محدودتر کنید یا خروجی Excel بگیرید.</p>{% endif %}
+
 {% block report_content %}{% endblock %}
+{% if print_mode %}<script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 400); });</script>{% endif %}
 {% endblock %}

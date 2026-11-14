@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.db.models.functions import Coalesce
 from . import permissions
+from .activity import A, log_activity
 from .models import Color, Size, Warehouse , Product , StockTransaction , StoreSettings
 from .settings_forms import ColorForm, SizeForm, UserCreateForm, UserEditForm, WarehouseForm , ProductEditForm , ProductDeleteForm , StoreSettingsForm
 
@@ -50,6 +51,7 @@ def store_settings(request):
     form = StoreSettingsForm(request.POST or None, instance=store)
     if request.method == "POST" and form.is_valid():
         form.save()
+        log_activity(request, A.SETTINGS, f"نام فروشگاه: «{form.instance.store_name}»")
         messages.success(request, "اطلاعات فروشگاه ذخیره شد.")
         return redirect("application:store_settings")
     return render(request, "settings_form.html", {
@@ -65,6 +67,7 @@ def simple_list(request, kind):
     form = cfg["form"](request.POST or None)
     if request.method == "POST" and form.is_valid():
         obj = form.save()
+        log_activity(request, A.SETTINGS, f"افزودن {cfg['singular']} «{obj.name}»")
         messages.success(request, f"{cfg['singular']} «{obj.name}» اضافه شد.")
         return redirect(cfg["list_url"])
     items = list(cfg["model"].objects.annotate(used=Count(cfg["rel"])))
@@ -81,6 +84,7 @@ def simple_edit(request, kind, pk):
     form = cfg["form"](request.POST or None, instance=obj)
     if request.method == "POST" and form.is_valid():
         form.save()
+        log_activity(request, A.SETTINGS, f"ویرایش {cfg['singular']} «{obj.name}»")
         messages.success(request, f"{cfg['singular']} «{obj.name}» ذخیره شد.")
         return redirect(cfg["list_url"])
     return render(request, "settings_form.html", {
@@ -99,6 +103,7 @@ def simple_delete(request, kind, pk):
         messages.error(request, f"{cfg['singular']} «{obj.name}» سابقه دارد و حذف نمی‌شود.{extra}")
     else:
         obj.delete()
+        log_activity(request, A.SETTINGS, f"حذف {cfg['singular']} «{obj.name}»")
         messages.success(request, f"{cfg['singular']} «{obj.name}» حذف شد.")
     return redirect(cfg["list_url"])
 
@@ -124,6 +129,7 @@ def user_create(request):
     form = UserCreateForm(request.POST or None, acting_user=request.user)
     if request.method == "POST" and form.is_valid():
         user = form.save()
+        log_activity(request, A.USER_MANAGE, f"ساخت کاربر «{user.username}» (سطح: {permissions.LABELS[permissions.get_role(user)]})")
         messages.success(request, f"کاربر «{user.username}» با سطح دسترسی {permissions.LABELS[permissions.get_role(user)]} ساخته شد.")
         return redirect("application:user_list")
     return render(request, "settings_form.html", {
@@ -138,6 +144,7 @@ def user_edit(request, pk):
     form = UserEditForm(request.POST or None, instance=user, acting_user=request.user)
     if request.method == "POST" and form.is_valid():
         form.save()
+        log_activity(request, A.USER_MANAGE, f"ویرایش کاربر «{user.username}»")
         messages.success(request, f"اطلاعات «{user.username}» ذخیره شد.")
         return redirect("application:user_list")
     return render(request, "settings_form.html", {
@@ -157,6 +164,7 @@ def user_delete(request, pk):
     else:
         name = user.username
         user.delete()  # تراکنش‌های ثبت‌شده‌ی او حفظ می‌شود (ثبت‌کننده خالی می‌شود)
+        log_activity(request, A.USER_MANAGE, f"حذف کاربر «{name}»")
         messages.success(request, f"کاربر «{name}» حذف شد.")
     return redirect("application:user_list")
 
@@ -208,6 +216,7 @@ def product_manage_edit(request, pk):
     )
     if request.method == "POST" and form.is_valid():
         product = form.save()
+        log_activity(request, A.PRODUCT_EDIT, f"«{product.name}» ({product.sku})")
         msg = f"محصول «{product.name}» ذخیره شد."
         if form.created_variants:
             msg += (f" {len(form.created_variants)} ترکیب جدید رنگ/سایز با موجودی صفر ساخته شد؛ "
@@ -242,6 +251,7 @@ def product_manage_delete(request, pk):
                 storage.delete(image_name)
             except OSError:
                 pass
+        log_activity(request, A.PRODUCT_DELETE, f"«{name}»" + (f" همراه با {tx_count} تراکنش" if tx_count else ""))
         messages.success(request, f"محصول «{name}» حذف شد.")
         return redirect("application:product_manage_list")
 

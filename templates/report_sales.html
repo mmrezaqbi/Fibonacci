@@ -1,0 +1,104 @@
+{% extends "report_base.html" %}
+{% load money_tags %}
+
+{% block title %}گزارش فروش | سامانه انبارداری{% endblock %}
+{% block page_subtitle %}میزان فروش بر اساس فاکتورهای خروج، به تفکیک روز، ماه یا کالا{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  table.report.sales { min-width: 620px; }
+  .sub { color: var(--muted); font-size: .76rem; margin-right: 6px; direction: ltr; unicode-bidi: embed; }
+  .hint-line { color: var(--muted); font-size: .8rem; margin: 0 0 14px; line-height: 1.9; }
+</style>
+{% endblock %}
+
+{% block report_content %}
+<form method="get" class="card filters" role="search">
+  <div class="f">
+    <label class="t" for="f-group">نمایش بر اساس</label>
+    <select id="f-group" name="group">
+      <option value="day" {% if group == 'day' %}selected{% endif %}>روزانه</option>
+      <option value="month" {% if group == 'month' %}selected{% endif %}>ماهانه (شمسی)</option>
+      <option value="product" {% if group == 'product' %}selected{% endif %}>به تفکیک کالا</option>
+    </select>
+  </div>
+  <div class="f">
+    <label class="t" for="f-from">از تاریخ (شمسی)</label>
+    <input type="text" id="f-from" name="date_from" value="{{ filters.date_from }}"
+           placeholder="1405/08/01" dir="ltr" inputmode="numeric" maxlength="10" autocomplete="off">
+  </div>
+  <div class="f">
+    <label class="t" for="f-to">تا تاریخ (شمسی)</label>
+    <input type="text" id="f-to" name="date_to" value="{{ filters.date_to }}"
+           placeholder="1405/08/30" dir="ltr" inputmode="numeric" maxlength="10" autocomplete="off">
+  </div>
+  <div class="btns">
+    <button type="submit" class="btn-sm">اعمال فیلتر</button>
+    {% if has_filters %}<a href="{% url 'application:report_sales' %}" class="btn-sm ghost">پاک کردن</a>{% endif %}
+  </div>
+  {% if date_error %}
+    <p style="flex: 1 1 100%; color: var(--danger); font-size: .82rem;">
+      تاریخ نامعتبر است و نادیده گرفته شد. فرمت درست: سال/ماه/روز مثل 1405/08/16
+    </p>
+  {% endif %}
+</form>
+
+<section class="stats">
+  <div class="card stat good">
+    <span>مبلغ کل فروش</span>
+    <b>{{ summary.amount|money }}</b>
+    <small>تومان</small>
+  </div>
+  <div class="card stat">
+    <span>تعداد کالای فروخته‌شده</span>
+    <b>{{ summary.qty }}</b>
+    <small>عدد</small>
+  </div>
+  <div class="card stat">
+    <span>تعداد فاکتور فروش</span>
+    <b>{{ summary.invoices }}</b>
+    <small>فاکتور خروج</small>
+  </div>
+  <div class="card stat">
+    <span>میانگین هر فاکتور</span>
+    <b>{{ summary.average|money }}</b>
+    <small>تومان</small>
+  </div>
+</section>
+
+<section class="card panel">
+  <div class="panel-head">
+    <h2>{% if group == 'product' %}فروش هر کالا{% elif group == 'month' %}فروش ماهانه{% else %}فروش روزانه{% endif %} <small>({{ total_count }} ردیف)</small></h2>
+  </div>
+  <p class="hint-line">مبلغ هر خروج = تعداد × قیمت واحد ثبت‌شده در فاکتور. خروج‌های بدون قیمت (مثل سفارش‌های سایت) فقط در تعداد حساب می‌شوند.</p>
+
+  <div class="table-scroll">
+    <table class="report sales">
+      <thead>
+        <tr>
+          <th>{% if group == 'product' %}کالا{% elif group == 'month' %}ماه{% else %}تاریخ{% endif %}</th>
+          <th class="num">فاکتور</th><th class="num">تعداد</th><th class="num">مبلغ فروش (تومان)</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in page_obj %}
+          <tr>
+            <td>{{ r.label }}{% if r.sub %}<span class="sub">{{ r.sub }}</span>{% endif %}</td>
+            <td class="num">{{ r.invoices }}</td>
+            <td class="num">{{ r.qty }}</td>
+            <td class="num">{{ r.amount|money }}</td>
+            <td style="width: 160px;"><span class="bar"><i style="width: {{ r.pct }}%"></i></span></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="empty">
+            {% if has_filters %}در این بازه فروشی ثبت نشده است.{% else %}هنوز فروشی (خروج از انبار) ثبت نشده است.{% endif %}
+          </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% include "includes/pager.html" %}
+</section>
+{% endblock %}

@@ -1,3 +1,5 @@
+import datetime
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -8,11 +10,17 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
+from .activity import A, log_activity
 from .permissions import role_required
 from .forms import ProductCreateForm, StockInForm, StockOutForm
 from .models import Category, Product, ProductVariant, StockTransaction
 
 PAGE_SIZE = 12
+
+
+def _today_count():
+    start = timezone.make_aware(datetime.datetime.combine(timezone.localdate(), datetime.time.min))
+    return StockTransaction.objects.filter(created_at__gte=start).count()
 
 
 @login_required
@@ -28,7 +36,7 @@ def home(request):
             "total_products": Product.objects.filter(is_active=True).count(),
             "total_stock": variants.aggregate(total=Sum("stock"))["total"] or 0,
             "low_stock_count": low_stock.count(),
-            "today_transactions": StockTransaction.objects.filter(created_at__date=today).count(),
+            "today_transactions": _today_count(),
         },
         "recent_transactions": (
             StockTransaction.objects
@@ -183,6 +191,7 @@ def product_create(request):
         form = ProductCreateForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             product = form.save()
+            log_activity(request, A.PRODUCT_CREATE, f"«{product.name}» ({product.sku})")
             messages.success(
                 request,
                 f"محصول «{product.name}» با {product.variants.count()} ترکیب رنگ/سایز "
@@ -216,6 +225,10 @@ def _stock_movement(request, *, form_class, ui):
                     # مثلاً موجودی هم‌زمان توسط کاربر دیگری کم شده است
                     form.add_error(None, e)
                 else:
+                    log_activity(
+                        request, A.STOCK_IN if form_class.movement_type.value == "in" else A.STOCK_OUT,
+                        f"{count} قلم، {total} عدد — «{product.name}»",
+                    )
                     messages.success(
                         request, ui["done"].format(count=count, total=total, name=product.name)
                     )

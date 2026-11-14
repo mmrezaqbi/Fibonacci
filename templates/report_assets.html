@@ -1,0 +1,112 @@
+{% extends "report_base.html" %}
+{% load money_tags %}
+
+{% block title %}گزارش دارایی انبار | سامانه انبارداری{% endblock %}
+{% block page_subtitle %}ارزش کل موجودی انبار بر اساس قیمت پایه‌ی کالا × جمع موجودی{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  table.report.assets { min-width: 640px; }
+  .sub { color: var(--muted); font-size: .76rem; margin-right: 6px; direction: ltr; unicode-bidi: embed; }
+  .hint-line { color: var(--muted); font-size: .8rem; margin: 0 0 14px; line-height: 1.9; }
+  .gap-top { margin-top: 16px; }
+</style>
+{% endblock %}
+
+{% block report_content %}
+<form method="get" class="card filters" role="search">
+  <div class="f grow">
+    <label class="t" for="f-q">جستجو</label>
+    <input type="search" id="f-q" name="q" value="{{ filters.q }}" placeholder="نام محصول، کد مدل یا برند...">
+  </div>
+  <div class="f">
+    <label class="t" for="f-cat">دسته‌بندی</label>
+    <select id="f-cat" name="category">
+      <option value="">همه دسته‌بندی‌ها</option>
+      {% for c in categories %}
+        <option value="{{ c.pk }}" {% if filters.category == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <label class="check"><input type="checkbox" name="inactive" value="1" {% if filters.inactive %}checked{% endif %}> شامل کالاهای غیرفعال</label>
+  <div class="btns">
+    <button type="submit" class="btn-sm">اعمال فیلتر</button>
+    {% if has_filters %}<a href="{% url 'application:report_assets' %}" class="btn-sm ghost">پاک کردن</a>{% endif %}
+  </div>
+</form>
+
+<section class="stats">
+  <div class="card stat good">
+    <span>ارزش کل دارایی</span>
+    <b>{{ summary.value|money }}</b>
+    <small>تومان (قیمت پایه × موجودی)</small>
+  </div>
+  <div class="card stat">
+    <span>جمع موجودی</span>
+    <b>{{ summary.stock }}</b>
+    <small>عدد کالا</small>
+  </div>
+  <div class="card stat">
+    <span>تعداد کالا</span>
+    <b>{{ summary.products }}</b>
+    <small>مطابق فیلتر فعلی</small>
+  </div>
+  <div class="card stat {% if summary.no_price %}warn{% endif %}">
+    <span>موجود، بدون قیمت</span>
+    <b>{{ summary.no_price }}</b>
+    <small>کالاهایی که قیمت پایه‌شان صفر است</small>
+  </div>
+</section>
+
+<section class="card panel">
+  <div class="panel-head"><h2>دارایی به تفکیک دسته‌بندی</h2></div>
+  <div class="table-scroll">
+    <table class="report assets">
+      <thead>
+        <tr><th>دسته‌بندی</th><th class="num">کالا</th><th class="num">موجودی</th><th class="num">ارزش (تومان)</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for c in category_rows %}
+          <tr>
+            <td>{{ c.name }}</td>
+            <td class="num">{{ c.products }}</td>
+            <td class="num">{{ c.stock }}</td>
+            <td class="num">{{ c.value|money }}</td>
+            <td style="width: 160px;"><span class="bar"><i style="width: {{ c.pct }}%"></i></span></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="empty">کالایی پیدا نشد.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card panel gap-top">
+  <div class="panel-head"><h2>دارایی هر کالا <small>({{ total_count }} کالا، به ترتیب بیشترین ارزش)</small></h2></div>
+  <p class="hint-line">ارزش هر کالا = جمع موجودی همه‌ی رنگ و سایزها × «قیمت پایه»ی همان کالا. قیمت اختصاصی رنگ/سایزها در این گزارش حساب نمی‌شود.</p>
+  <div class="table-scroll">
+    <table class="report assets">
+      <thead>
+        <tr><th>کالا</th><th>دسته‌بندی</th><th class="num">قیمت پایه (تومان)</th><th class="num">موجودی</th><th class="num">ارزش (تومان)</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for p in page_obj %}
+          <tr>
+            <td><a href="{% url 'application:product_detail' p.id %}">{{ p.name }}</a><span class="sub">{{ p.sku }}</span></td>
+            <td>{{ p.category }}</td>
+            <td class="num">{{ p.price|money }}</td>
+            <td class="num">{{ p.stock }}</td>
+            <td class="num">{{ p.value|money }}</td>
+            <td style="width: 140px;"><span class="bar"><i style="width: {{ p.pct }}%"></i></span></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="empty">{% if has_filters %}کالایی با این فیلترها پیدا نشد.{% else %}هنوز کالایی ثبت نشده است.{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "includes/pager.html" %}
+</section>
+{% endblock %}

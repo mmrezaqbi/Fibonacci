@@ -1,0 +1,112 @@
+{% extends "report_base.html" %}
+{% load jalali_tags %}
+
+{% block title %}فعالیت کاربران | سامانه انبارداری{% endblock %}
+{% block page_subtitle %}هر کاربر چه کاری را در چه ساعتی انجام داده است (فقط مدیر){% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  table.report.activity { min-width: 820px; }
+  .report td.detail { white-space: normal; min-width: 240px; }
+  .ltr { direction: ltr; unicode-bidi: embed; }
+  .b-act { background: rgba(108, 140, 255, .15); color: var(--primary); }
+  .b-act.login, .b-act.logout { background: rgba(255, 255, 255, .07); color: var(--muted); }
+  .b-act.invoice_out, .b-act.stock_out, .b-act.product_delete { background: rgba(255, 107, 122, .12); color: var(--danger); }
+  .b-act.invoice_in, .b-act.stock_in, .b-act.product_create { background: rgba(61, 220, 151, .13); color: var(--success); }
+  .b-act.settings, .b-act.user_manage { background: rgba(245, 184, 75, .14); color: var(--warning); }
+  .hint-line { color: var(--muted); font-size: .8rem; margin: 0 0 14px; line-height: 1.9; }
+</style>
+{% endblock %}
+
+{% block report_content %}
+<form method="get" class="card filters" role="search">
+  <div class="f grow">
+    <label class="t" for="f-q">جستجو</label>
+    <input type="search" id="f-q" name="q" value="{{ filters.q }}" placeholder="در توضیح فعالیت یا نام کاربری...">
+  </div>
+  <div class="f">
+    <label class="t" for="f-user">کاربر</label>
+    <select id="f-user" name="user">
+      <option value="">همه کاربران</option>
+      {% for u in users %}
+        <option value="{{ u.pk }}" {% if filters.user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.username }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="f">
+    <label class="t" for="f-act">نوع فعالیت</label>
+    <select id="f-act" name="action">
+      <option value="">همه فعالیت‌ها</option>
+      {% for value, label in actions %}
+        <option value="{{ value }}" {% if filters.action == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="f">
+    <label class="t" for="f-from">از تاریخ (شمسی)</label>
+    <input type="text" id="f-from" name="date_from" value="{{ filters.date_from }}"
+           placeholder="1405/08/01" dir="ltr" inputmode="numeric" maxlength="10" autocomplete="off">
+  </div>
+  <div class="f">
+    <label class="t" for="f-to">تا تاریخ (شمسی)</label>
+    <input type="text" id="f-to" name="date_to" value="{{ filters.date_to }}"
+           placeholder="1405/08/30" dir="ltr" inputmode="numeric" maxlength="10" autocomplete="off">
+  </div>
+  <div class="btns">
+    <button type="submit" class="btn-sm">اعمال فیلتر</button>
+    {% if has_filters %}<a href="{% url 'application:report_activity' %}" class="btn-sm ghost">پاک کردن</a>{% endif %}
+  </div>
+  {% if date_error %}
+    <p style="flex: 1 1 100%; color: var(--danger); font-size: .82rem;">
+      تاریخ نامعتبر است و نادیده گرفته شد. فرمت درست: سال/ماه/روز مثل 1405/08/16
+    </p>
+  {% endif %}
+</form>
+
+<section class="stats">
+  <div class="card stat">
+    <span>تعداد فعالیت</span>
+    <b>{{ summary.count }}</b>
+    <small>مطابق فیلتر فعلی</small>
+  </div>
+  <div class="card stat">
+    <span>کاربران فعال</span>
+    <b>{{ summary.users }}</b>
+    <small>کاربر</small>
+  </div>
+  <div class="card stat">
+    <span>آخرین فعالیت</span>
+    <b style="font-size: 1rem;">{% if summary.last %}{{ summary.last|jdatetime }}{% else %}—{% endif %}</b>
+    <small>&nbsp;</small>
+  </div>
+</section>
+
+<section class="card panel">
+  <div class="panel-head"><h2>فهرست فعالیت‌ها <small>({{ total_count }} مورد، جدیدترین اول)</small></h2></div>
+  <p class="hint-line">فعالیت‌ها از زمان فعال شدن این بخش ثبت می‌شوند؛ کارهای قبل از آن در این فهرست نیست.</p>
+
+  <div class="table-scroll">
+    <table class="report activity">
+      <thead>
+        <tr><th>زمان</th><th>کاربر</th><th>فعالیت</th><th>توضیح</th><th>آدرس IP</th></tr>
+      </thead>
+      <tbody>
+        {% for a in page_obj %}
+          <tr>
+            <td>{{ a.created_at|jdatetime }}</td>
+            <td>{{ a.username|default:"—" }}</td>
+            <td><span class="badge b-act {{ a.action }}">{{ a.get_action_display }}</span></td>
+            <td class="detail">{{ a.detail|default:"—" }}</td>
+            <td class="ltr" style="text-align: right;">{{ a.ip_address|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="empty">{% if has_filters %}فعالیتی با این فیلترها پیدا نشد.{% else %}هنوز فعالیتی ثبت نشده است.{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% include "includes/pager.html" %}
+</section>
+{% endblock %}

@@ -279,6 +279,42 @@ class Invoice(models.Model):
         return f"{self.code} ({self.get_type_display()})"
 
 
+class ActivityLog(models.Model):
+    """ثبت فعالیت کاربران در برنامه: چه کسی، چه کاری، در چه زمانی."""
+
+    class Action(models.TextChoices):
+        LOGIN = "login", "ورود به برنامه"
+        LOGOUT = "logout", "خروج از برنامه"
+        INVOICE_OUT = "invoice_out", "ثبت فاکتور خروج"
+        INVOICE_IN = "invoice_in", "ثبت فاکتور ورود"
+        STOCK_OUT = "stock_out", "ثبت خروج کالا"
+        STOCK_IN = "stock_in", "ثبت ورود کالا"
+        PRODUCT_CREATE = "product_create", "افزودن کالا"
+        PRODUCT_EDIT = "product_edit", "ویرایش کالا"
+        PRODUCT_DELETE = "product_delete", "حذف کالا"
+        CATEGORY = "category", "مدیریت دسته‌بندی"
+        SETTINGS = "settings", "تغییر تنظیمات"
+        USER_MANAGE = "user_manage", "مدیریت کاربران"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="کاربر",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="activity_logs",
+    )
+    username = models.CharField("نام کاربری", max_length=150, blank=True)
+    action = models.CharField("فعالیت", max_length=20, choices=Action.choices, db_index=True)
+    detail = models.CharField("توضیح", max_length=500, blank=True)
+    ip_address = models.GenericIPAddressField("آدرس IP", null=True, blank=True)
+    created_at = models.DateTimeField("زمان", auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "فعالیت کاربر"
+        verbose_name_plural = "فعالیت‌های کاربران"
+        ordering = ["-created_at", "-pk"]
+
+    def __str__(self):
+        return f"{self.username} — {self.get_action_display()}"
+
+
 class StoreSettings(models.Model):
     """اطلاعات فروشگاه (فقط یک ردیف). نام فروشگاه بالای فاکتور چاپی نوشته می‌شود."""
 

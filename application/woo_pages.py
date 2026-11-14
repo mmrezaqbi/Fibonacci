@@ -14,6 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from . import permissions, woo_client, woo_sync
+from .activity import A, log_activity
 from .models import (
     ProductVariant, Warehouse, WooLog, WooOrder, WooProductLink, WooSettings, WooVariantLink,
 )
@@ -102,6 +103,7 @@ def woo_settings(request):
             form = WooSettingsForm(request.POST, instance=settings)
             if form.is_valid():
                 form.save()
+                log_activity(request, A.SETTINGS, "ذخیره تنظیمات ووکامرس")
                 messages.success(request, "تنظیمات ووکامرس ذخیره شد.")
                 return redirect("application:woo_settings")
         else:

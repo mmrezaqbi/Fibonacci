@@ -29,6 +29,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from .activity import A, log_activity
 from .invoice_utils import BUYER_NAME_MAX, clean_buyer_name, is_valid_mobile, normalize_phone
 from .models import Invoice, Product, ProductVariant, StockTransaction, StoreSettings, Warehouse
 from .reports import _jalali_stamp
@@ -313,6 +314,11 @@ def invoice_submit(request):
     except ValidationError as exc:
         return _fail(" ".join(exc.messages) or "ثبت فاکتور انجام نشد.", status=409)
 
+    log_activity(
+        request, A.INVOICE_OUT if kind == StockTransaction.Type.OUT else A.INVOICE_IN,
+        f"فاکتور {code} — {len(done)} قلم، {sum(d['quantity'] for d in done)} عدد، انبار {warehouse.name}"
+        + (f"، خریدار: {buyer_name}" if buyer_name else ""),
+    )
     return JsonResponse({
         "ok": True,
         "code": code,
