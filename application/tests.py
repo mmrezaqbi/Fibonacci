@@ -4,6 +4,8 @@ from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
+from .templatetags.money_tags import money
+from .widgets import MoneyInput
 from .invoice_utils import clean_buyer_name, is_valid_mobile, normalize_phone
 from .models import Color, Invoice, Product, ProductVariant, Size, StockTransaction, StoreSettings, Warehouse
 
@@ -23,6 +25,19 @@ class BuyerHelpersTests(SimpleTestCase):
 
     def test_clean_buyer_name_unifies_arabic_letters(self):
         self.assertEqual(clean_buyer_name("  علي   كريمي "), "علی کریمی")
+
+
+class MoneyTests(SimpleTestCase):
+    def test_money_filter_groups_by_three(self):
+        self.assertEqual(money(1250000), "1,250,000")
+        self.assertEqual(money("999"), "999")
+        self.assertEqual(money(0), "0")
+        self.assertEqual(money(None), "")
+
+    def test_money_input_formats_and_strips_separators(self):
+        w = MoneyInput()
+        self.assertEqual(w.format_value(1250000), "1,250,000")
+        self.assertEqual(w.value_from_datadict({"price": "۱,۲۵۰,۰۰۰"}, {}, "price"), "1250000")
 
 
 class InvoiceBuyerTests(TestCase):

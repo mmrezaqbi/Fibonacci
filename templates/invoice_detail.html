@@ -1,4 +1,5 @@
 {% extends "home-base.html" %}
+{% load money_tags %}
 {% load jalali_tags %}
 
 {% block title %}فاکتور {{ invoice.code }} | سامانه انبارداری{% endblock %}
@@ -89,8 +90,8 @@
             <td class="ltr" style="text-align: right;">{{ r.t.variant.sku }}</td>
             <td class="num">{{ r.t.quantity }}</td>
             {% if is_out %}
-              <td class="num">{% if r.t.unit_price is not None %}{{ r.t.unit_price|floatformat:"0g" }}{% else %}—{% endif %}</td>
-              <td class="num">{{ r.line_total|floatformat:"0g" }}</td>
+              <td class="num">{% if r.t.unit_price is not None %}{{ r.t.unit_price|money }}{% else %}—{% endif %}</td>
+              <td class="num">{{ r.line_total|money }}</td>
             {% endif %}
           </tr>
         {% empty %}
@@ -100,7 +101,7 @@
     </table>
   </div>
 
-  <p class="sum">جمع کل: {{ total_qty }} عدد در {{ rows|length }} قلم{% if is_out %} — مبلغ کل: {{ total_amount|floatformat:"0g" }} تومان{% endif %}</p>
+  <p class="sum">جمع کل: {{ total_qty }} عدد در {{ rows|length }} قلم{% if is_out %} — مبلغ کل: {{ total_amount|money }} تومان{% endif %}</p>
   {% if invoice.note %}<p class="note">توضیحات: {{ invoice.note }}</p>{% endif %}
 </section>
 {% endblock %}

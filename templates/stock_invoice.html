@@ -787,11 +787,11 @@
     if (IS_OUT) {
       var pw = el('div', 'l-price');
       var pinp = el('input');
-      pinp.type = 'number'; pinp.min = '0'; pinp.step = '1'; pinp.setAttribute('inputmode', 'numeric');
-      pinp.value = priceOk(l) ? l.price : '';
+      pinp.type = 'text'; pinp.setAttribute('inputmode', 'numeric'); pinp.setAttribute('data-money', '1'); pinp.setAttribute('dir', 'ltr');
+      pinp.value = priceOk(l) ? fmt(l.price) : '';
       pinp.setAttribute('aria-label', 'قیمت واحد ' + l.product);
       pinp.addEventListener('input', function () {
-        var n = parseInt(normalize(pinp.value), 10);
+        var n = parseInt(normalize(pinp.value).replace(/\D/g, ''), 10);
         l.price = isNaN(n) ? null : n; l.error = '';
         row.classList.toggle('bad', isBad(l));
         refreshSum();

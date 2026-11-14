@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money_tags %}
 {% load jalali_tags access_tags %}
 
 {% block title %}{{ product.name }} | سامانه انبارداری{% endblock %}
@@ -120,7 +121,7 @@
       <div><dt>جنسیت</dt><dd>{{ product.get_gender_display }}</dd></div>
       <div><dt>فصل</dt><dd>{{ product.get_season_display }}</dd></div>
       <div><dt>جنس پارچه</dt><dd>{{ product.material|default:"—" }}</dd></div>
-      <div><dt>قیمت پایه</dt><dd>{{ product.price|floatformat:"0g" }} تومان</dd></div>
+      <div><dt>قیمت پایه</dt><dd>{{ product.price|money }} تومان</dd></div>
     </dl>
     {% if product.description %}<p class="desc">{{ product.description|linebreaksbr }}</p>{% endif %}
   </div>
@@ -144,7 +145,7 @@
   </div>
   <div class="card stat">
     <span>ارزش موجودی</span>
-    <b>{{ stats.value|floatformat:"0g" }}</b>
+    <b>{{ stats.value|money }}</b>
     <small>تومان (بر اساس قیمت واحد)</small>
   </div>
 </section>

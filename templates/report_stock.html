@@ -1,4 +1,5 @@
 {% extends "report_base.html" %}
+{% load money_tags %}
 
 {% block title %}گزارش موجودی | سامانه انبارداری{% endblock %}
 {% block page_subtitle %}موجودی فعلی هر رنگ و سایز، همراه با ارزش و وضعیت{% endblock %}
@@ -82,7 +83,7 @@
   </div>
   <div class="card stat">
     <span>ارزش موجودی</span>
-    <b>{{ summary.value|floatformat:"0g" }}</b>
+    <b>{{ summary.value|money }}</b>
     <small>تومان (بر اساس قیمت واحد)</small>
   </div>
   <div class="card stat {% if summary.low %}warn{% endif %}">
@@ -125,8 +126,8 @@
             <td class="num"><b>{{ v.stock }}</b></td>
             <td class="num">{{ v.min_stock }}</td>
             <td><span class="badge b-{{ v.status_key }}">{{ v.status_label }}</span></td>
-            <td class="num">{{ v.unit|floatformat:"0g" }}</td>
-            <td class="num">{{ v.value|floatformat:"0g" }}</td>
+            <td class="num">{{ v.unit|money }}</td>
+            <td class="num">{{ v.value|money }}</td>
           </tr>
         {% empty %}
           <tr><td colspan="9" class="empty">

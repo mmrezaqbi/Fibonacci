@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from .models import Color, Product, Size, StockTransaction, Warehouse
+from .widgets import MoneyInput
 
 
 def qty_name(color, size):
@@ -52,7 +53,7 @@ class ProductCreateForm(forms.ModelForm):
             "sku": forms.TextInput(attrs={"placeholder": "SH100", "dir": "ltr"}),
             "brand": forms.TextInput(attrs={"placeholder": "اختیاری"}),
             "material": forms.TextInput(attrs={"placeholder": "مثلاً کتان، پنبه"}),
-            "price": forms.NumberInput(attrs={"placeholder": "تومان", "min": 0}),
+            "price": MoneyInput(attrs={"placeholder": "تومان"}),
             "description": forms.Textarea(attrs={"rows": 3}),
         }
 

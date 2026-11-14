@@ -295,6 +295,33 @@
       });
     })();
   </script>
+  <script>
+    /* جداکننده‌ی سه‌رقمی هنگام تایپ در همه‌ی فیلدهای مبلغ (input[data-money]) */
+    (function () {
+      function toLatin(s) {
+        return s.replace(/[\u06F0-\u06F9]/g, function (d) { return d.charCodeAt(0) - 1776; })
+                .replace(/[\u0660-\u0669]/g, function (d) { return d.charCodeAt(0) - 1632; });
+      }
+      function group(el) {
+        var v = toLatin(el.value), pos = el.selectionStart == null ? v.length : el.selectionStart;
+        var left = v.slice(0, pos).replace(/\D/g, '').length;
+        var digits = v.replace(/\D/g, '');
+        var out = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        if (out === el.value) return;
+        el.value = out;
+        var p = 0, seen = 0;
+        while (p < out.length && seen < left) { if (out.charAt(p) !== ',') seen++; p++; }
+        try { el.setSelectionRange(p, p); } catch (e) { /* ignore */ }
+      }
+      document.addEventListener('input', function (e) {
+        if (e.target && e.target.matches && e.target.matches('input[data-money]')) group(e.target);
+      });
+      document.addEventListener('submit', function (e) {
+        var list = e.target.querySelectorAll ? e.target.querySelectorAll('input[data-money]') : [];
+        for (var i = 0; i < list.length; i++) list[i].value = toLatin(list[i].value).replace(/\D/g, '');
+      });
+    })();
+  </script>
   {% block extra_js %}{% endblock %}
 </body>
 </html>
