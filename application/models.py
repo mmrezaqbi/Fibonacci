@@ -2,7 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import F, Sum
-
+from django.core.validators import MinValueValidator
 
 class Category(models.Model):
     name = models.CharField("نام دسته‌بندی", max_length=100, unique=True)
@@ -210,6 +210,7 @@ class StockTransaction(models.Model):
     type = models.CharField("نوع", max_length=3, choices=Type.choices)
     quantity = models.PositiveIntegerField("تعداد")
     note = models.CharField("توضیحات", max_length=255, blank=True)
+    unit_price = models.DecimalField("قیمت واحد در فاکتور", max_digits=14, decimal_places=0,null=True, blank=True, validators=[MinValueValidator(0)],)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name="ثبت‌کننده",
         on_delete=models.SET_NULL, null=True, blank=True, related_name="stock_transactions",

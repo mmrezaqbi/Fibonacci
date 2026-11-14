@@ -1,0 +1,83 @@
+{% extends "settings_base.html" %}
+
+{% block page_subtitle %}ویرایش «{{ original_name }}»{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  .pick { display: flex; flex-wrap: wrap; gap: 10px; }
+  .pick-item {
+    display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 12px;
+    background: var(--input); border: 1px solid var(--border); color: var(--text); font-size: .88rem; cursor: pointer;
+  }
+  .pick-none { color: var(--muted); font-size: .84rem; }
+</style>
+{% endblock %}
+
+{% block settings_content %}
+{# enctype برای آپلود تصویر لازم است #}
+<form method="post" enctype="multipart/form-data" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="form-errors">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+
+  <section class="card set-card">
+    <h2>ویرایش «{{ original_name }}»</h2>
+    <p class="lead">موجودی از اینجا تغییر نمی‌کند؛ برای تغییر موجودی از «ورود» و «خروج» استفاده کنید.</p>
+    <div class="form-grid">
+      {% include "includes/field.html" with field=form.name %}
+      {% include "includes/field.html" with field=form.sku %}
+      {% include "includes/field.html" with field=form.brand %}
+      {% include "includes/field.html" with field=form.category %}
+      {% include "includes/field.html" with field=form.gender %}
+      {% include "includes/field.html" with field=form.season %}
+      {% include "includes/field.html" with field=form.material %}
+      {% include "includes/field.html" with field=form.price %}
+      {% include "includes/field.html" with field=form.image extra_class="wide" %}
+      {% include "includes/field.html" with field=form.description extra_class="wide" %}
+      {% include "includes/field.html" with field=form.is_active extra_class="check-row wide" %}
+    </div>
+  </section>
+
+  <section class="card set-card">
+    <h2>افزودن رنگ یا سایز جدید</h2>
+    <p class="lead">اختیاری. ترکیب‌های جدید با موجودی صفر ساخته می‌شوند.</p>
+    <div class="form-grid">
+      <div class="field wide">
+        <label>{{ form.add_colors.label }}</label>
+        <div class="pick">
+          {% for opt in form.add_colors %}
+            <label class="pick-item">{{ opt.tag }} {{ opt.choice_label }}</label>
+          {% empty %}
+            <span class="pick-none">همه‌ی رنگ‌های تعریف‌شده قبلاً برای این کالا ثبت شده‌اند.</span>
+          {% endfor %}
+        </div>
+        {% for error in form.add_colors.errors %}<small class="err">{{ error }}</small>{% endfor %}
+      </div>
+      <div class="field wide">
+        <label>{{ form.add_sizes.label }}</label>
+        <div class="pick">
+          {% for opt in form.add_sizes %}
+            <label class="pick-item">{{ opt.tag }} {{ opt.choice_label }}</label>
+          {% empty %}
+            <span class="pick-none">همه‌ی سایزهای تعریف‌شده قبلاً برای این کالا ثبت شده‌اند.</span>
+          {% endfor %}
+        </div>
+        {% for error in form.add_sizes.errors %}<small class="err">{{ error }}</small>{% endfor %}
+      </div>
+      {% include "includes/field.html" with field=form.new_min_stock %}
+    </div>
+  </section>
+
+  <section class="card set-card">
+    <h2>تأیید مدیر</h2>
+    <p class="lead">برای ذخیره‌ی تغییرات، رمز عبور مدیر را وارد کنید.</p>
+    <div class="form-grid">
+      {% include "includes/field.html" with field=form.admin_password %}
+    </div>
+    <div class="actions-bar">
+      <button type="submit" class="btn-sm">ذخیره تغییرات</button>
+      <a href="{% url 'application:product_manage_list' %}" class="btn-sm ghost">انصراف</a>
+    </div>
+  </section>
+</form>
+{% endblock %}

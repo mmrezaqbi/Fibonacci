@@ -2,10 +2,11 @@ import re
 
 from django import forms
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.contrib.auth.password_validation import validate_password
 
 from . import permissions
-from .models import Color, Size, Warehouse
+from .models import Color, Size, Warehouse , Category , Product
 
 User = get_user_model()
 HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -156,3 +157,130 @@ class UserEditForm(_UserBase):
         if self.cleaned_data.get("password1"):
             user.set_password(self.cleaned_data["password1"])
         return self._commit(user)
+
+
+
+
+# ---------------------------------------------------------------------------
+# ویرایش و حذف کالا (با تأیید رمز مدیر)
+# ---------------------------------------------------------------------------
+def _verify_admin(user, raw_password):
+    return bool(
+        user and getattr(user, "is_active", False)
+        and user.is_superuser and user.check_password(raw_password)
+    )
+
+
+def _admin_password_field():
+    return forms.CharField(
+        label="رمز عبور مدیر", strip=False,
+        widget=forms.PasswordInput(attrs={"dir": "ltr", "autocomplete": "current-password"}),
+        help_text="برای تأیید این عملیات، رمز عبور حساب مدیر (سوپر ادمین) را وارد کنید.",
+    )
+
+
+class ProductEditForm(forms.ModelForm):
+    add_colors = forms.ModelMultipleChoiceField(
+        label="افزودن رنگ‌های جدید", queryset=Color.objects.none(), required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+    add_sizes = forms.ModelMultipleChoiceField(
+        label="افزودن سایزهای جدید", queryset=Size.objects.none(), required=False,
+        widget=forms.CheckboxSelectMultiple,
+    )
+    new_min_stock = forms.IntegerField(
+        label="حداقل موجودی ترکیب‌های جدید", min_value=0, initial=3, required=False,
+        help_text="فقط برای ترکیب‌هایی که الان ساخته می‌شوند؛ موجودی آن‌ها صفر است و از «ورود» ثبت می‌شود.",
+    )
+    admin_password = _admin_password_field()
+
+    class Meta:
+        model = Product
+        fields = [
+            "name", "sku", "brand", "category", "gender", "season",
+            "material", "price", "image", "description", "is_active",
+        ]
+        widgets = {
+            "name": forms.TextInput(attrs={"placeholder": "مثلاً پیراهن کتان مردانه"}),
+            "sku": forms.TextInput(attrs={"placeholder": "SH100", "dir": "ltr"}),
+            "brand": forms.TextInput(attrs={"placeholder": "اختیاری"}),
+            "material": forms.TextInput(attrs={"placeholder": "مثلاً کتان، پنبه"}),
+            "price": forms.NumberInput(attrs={"placeholder": "تومان", "min": 0}),
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, acting_user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.acting_user = acting_user
+        self.created_variants = []
+        self.fields["category"].empty_label = "— بدون دسته‌بندی —"
+        # فقط رنگ/سایزهایی که این کالا هنوز ندارد
+        self.fields["add_colors"].queryset = Color.objects.exclude(variants__product=self.instance)
+        self.fields["add_sizes"].queryset = Size.objects.exclude(variants__product=self.instance)
+
+    def clean_sku(self):
+        return self.cleaned_data["sku"].strip().upper()
+
+    def clean_add_colors(self):
+        new = list(self.cleaned_data["add_colors"])
+        if not new:
+            return new
+        current = list(Color.objects.filter(variants__product=self.instance).distinct())
+        codes = [c.code.strip().upper() for c in current + new if c.code.strip()]
+        if len(codes) != len(set(codes)):
+            raise forms.ValidationError(
+                "رنگ انتخاب‌شده «کد کوتاه» تکراری با رنگ‌های این کالا دارد. کد رنگ‌ها را در تنظیمات اصلاح کنید."
+            )
+        return new
+
+    def clean_admin_password(self):
+        pw = self.cleaned_data["admin_password"]
+        if not _verify_admin(self.acting_user, pw):
+            raise forms.ValidationError("رمز عبور مدیر اشتباه است.")
+        return pw
+
+    def save(self, commit=True):
+        with transaction.atomic():
+            existing_colors = list(Color.objects.filter(variants__product=self.instance).distinct())
+            existing_sizes = list(Size.objects.filter(variants__product=self.instance).distinct())
+            product = super().save(commit=True)
+            new_colors = list(self.cleaned_data.get("add_colors") or [])
+            new_sizes = list(self.cleaned_data.get("add_sizes") or [])
+            if new_colors or new_sizes:
+                min_stock = self.cleaned_data.get("new_min_stock")
+                self.created_variants = product.generate_variants(
+                    existing_colors + new_colors,
+                    existing_sizes + new_sizes,
+                    min_stock=3 if min_stock is None else min_stock,
+                )
+        return product
+
+
+class ProductDeleteForm(forms.Form):
+    admin_password = _admin_password_field()
+    delete_history = forms.BooleanField(
+        label="تراکنش‌های ورود و خروج این کالا هم برای همیشه حذف شود",
+        required=False,
+    )
+
+    def __init__(self, *args, acting_user=None, has_history=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.acting_user = acting_user
+        self.has_history = has_history
+        if not has_history:
+            del self.fields["delete_history"]
+
+    def clean_admin_password(self):
+        pw = self.cleaned_data["admin_password"]
+        if not _verify_admin(self.acting_user, pw):
+            raise forms.ValidationError("رمز عبور مدیر اشتباه است.")
+        return pw
+
+    def clean(self):
+        data = super().clean()
+        if self.has_history and not data.get("delete_history"):
+            self.add_error(
+                "delete_history",
+                "این کالا سابقه ورود/خروج دارد. برای حذف باید این گزینه را تیک بزنید؛ یا به‌جای حذف، کالا را در ویرایش غیرفعال کنید.",
+            )
+        return data

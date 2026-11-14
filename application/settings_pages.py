@@ -1,14 +1,16 @@
 """صفحه‌های تنظیمات (فقط مدیر): رنگ‌ها، سایزها و کاربران."""
 from django.contrib import messages
 from django.contrib.auth import get_user_model
-from django.db.models import Count
+from django.db.models import Count , IntegerField , Sum , Value
+from django.core.paginator import Paginator
+from django.db import transaction    
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
-
+from django.db.models.functions import Coalesce
 from . import permissions
-from .models import Color, Size, Warehouse
-from .settings_forms import ColorForm, SizeForm, UserCreateForm, UserEditForm, WarehouseForm
+from .models import Color, Size, Warehouse , Product , StockTransaction 
+from .settings_forms import ColorForm, SizeForm, UserCreateForm, UserEditForm, WarehouseForm , ProductEditForm , ProductDeleteForm
 
 User = get_user_model()
 admin_only = permissions.role_required(permissions.ADMIN)
@@ -141,3 +143,94 @@ def user_delete(request, pk):
         user.delete()  # تراکنش‌های ثبت‌شده‌ی او حفظ می‌شود (ثبت‌کننده خالی می‌شود)
         messages.success(request, f"کاربر «{name}» حذف شد.")
     return redirect("application:user_list")
+
+
+
+
+# ---------------------------------------------------------------------------
+# کالاها: ویرایش و حذف (فقط مدیر، با تأیید رمز)
+# ---------------------------------------------------------------------------
+PRODUCT_PAGE_SIZE = 20
+
+
+@admin_only
+def product_manage_list(request):
+    q = request.GET.get("q", "").strip()
+    qs = (
+        Product.objects.select_related("category")
+        .annotate(
+            stock_sum=Coalesce(Sum("variants__stock"), Value(0), output_field=IntegerField()),
+            variants_n=Count("variants"),
+        )
+    )
+    if q:
+        qs = qs.filter(Q(name__icontains=q) | Q(sku__icontains=q) | Q(brand__icontains=q))
+
+    paginator = Paginator(qs.order_by("name", "pk"), PRODUCT_PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    params = request.GET.copy()
+    params.pop("page", None)
+
+    return render(request, "settings_products.html", {
+        "section": "product",
+        "page_obj": page_obj,
+        "page_range": list(paginator.get_elided_page_range(page_obj.number, on_each_side=1, on_ends=1)),
+        "ellipsis": paginator.ELLIPSIS,
+        "querystring": params.urlencode(),
+        "total_count": paginator.count,
+        "q": q,
+    })
+
+
+@admin_only
+def product_manage_edit(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    original_name = product.name  # برای عنوان صفحه (فرم هنگام اعتبارسنجی نمونه را تغییر می‌دهد)
+    form = ProductEditForm(
+        request.POST or None, request.FILES or None,
+        instance=product, acting_user=request.user,
+    )
+    if request.method == "POST" and form.is_valid():
+        product = form.save()
+        msg = f"محصول «{product.name}» ذخیره شد."
+        if form.created_variants:
+            msg += (f" {len(form.created_variants)} ترکیب جدید رنگ/سایز با موجودی صفر ساخته شد؛ "
+                    "موجودی را از بخش «ورود» ثبت کنید.")
+        messages.success(request, msg)
+        return redirect("application:product_manage_list")
+    return render(request, "settings_product_edit.html", {
+        "form": form, "product": product, "original_name": original_name, "section": "product",
+    })
+
+
+@admin_only
+def product_manage_delete(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    tx_count = StockTransaction.objects.filter(variant__product=product).count()
+    form = ProductDeleteForm(
+        request.POST or None, acting_user=request.user, has_history=tx_count > 0,
+    )
+    if request.method == "POST" and form.is_valid():
+        name = product.name
+        image_name, storage = product.image.name, product.image.storage
+        try:
+            with transaction.atomic():
+                if tx_count:
+                    StockTransaction.objects.filter(variant__product=product).delete()
+                product.delete()  # تنوع‌ها و لینک‌های ووکامرس با CASCADE پاک می‌شوند
+        except ProtectedError:
+            messages.error(request, f"محصول «{name}» به‌دلیل وابستگی به داده‌های دیگر حذف نشد.")
+            return redirect("application:product_manage_list")
+        if image_name:
+            try:
+                storage.delete(image_name)
+            except OSError:
+                pass
+        messages.success(request, f"محصول «{name}» حذف شد.")
+        return redirect("application:product_manage_list")
+
+    return render(request, "settings_product_delete.html", {
+        "form": form, "product": product, "section": "product",
+        "tx_count": tx_count, "has_history": tx_count > 0,
+        "variants_n": product.variants.count(), "stock_total": product.total_stock,
+    })

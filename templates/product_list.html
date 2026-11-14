@@ -128,6 +128,12 @@
     {% if has_filters %}<a href="{% url 'application:product_list' %}" class="btn-sm ghost">پاک کردن</a>{% endif %}
   </form>
   {% if request.user|has_role:"keeper" %}<a href="{% url 'application:product_create' %}" class="btn-sm add-btn">+ افزودن کالا</a>{% endif %}
+    {% if request.user|has_role:"keeper" %}
+    <a href="{% url 'application:product_export_csv' %}?{{ querystring }}" class="btn-sm ghost add-btn"
+       title="اگر فیلتر فعال باشد فقط کالاهای فیلترشده خروجی گرفته می‌شود">خروجی CSV ووکامرس</a>
+    <a href="{% url 'application:product_export_csv' %}?{{ querystring }}&images=1" class="btn-sm ghost add-btn"
+       title="آدرس تصاویر هم در فایل می‌آید؛ سایت وردپرس باید به آدرس تصاویر دسترسی داشته باشد">CSV با تصاویر</a>
+  {% endif %}
 </div>
 
 {% if page_obj.object_list %}

@@ -1,0 +1,67 @@
+{% extends "settings_base.html" %}
+
+{% block page_subtitle %}ویرایش و حذف کالاها؛ هر دو عملیات به رمز عبور مدیر نیاز دارند{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  .p-search { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .p-search input[type=search] {
+    flex: 1 1 240px; min-width: 0; background: var(--input); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--text); font: inherit; font-size: .88rem; padding: 10px 14px; outline: none;
+  }
+  .p-search input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108, 140, 255, .16); }
+  .pager { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 20px; flex-wrap: wrap; }
+  .pager a, .pager span {
+    min-width: 38px; height: 38px; padding: 0 12px; display: inline-grid; place-items: center;
+    border-radius: 10px; font-size: .88rem; border: 1px solid var(--border); color: var(--muted);
+  }
+  .pager .current { color: #fff; border-color: var(--primary); background: rgba(108, 140, 255, .3); }
+  .pager .gap { border: 0; }
+</style>
+{% endblock %}
+
+{% block settings_content %}
+<section class="card panel">
+  <div class="panel-head"><h2>کالاها <small>({{ total_count }} مورد)</small></h2></div>
+
+  <form method="get" class="p-search" role="search">
+    <input type="search" name="q" value="{{ q }}" placeholder="جستجوی نام، کد مدل یا برند..." aria-label="جستجو">
+    <button type="submit" class="btn-sm">جستجو</button>
+    {% if q %}<a href="{% url 'application:product_manage_list' %}" class="btn-sm ghost">پاک کردن</a>{% endif %}
+  </form>
+
+  <div class="table-scroll">
+    <table class="report stack">
+      <thead>
+        <tr>
+          <th>نام کالا</th><th>کد مدل</th><th>دسته‌بندی</th>
+          <th class="num">ترکیب‌ها</th><th class="num">موجودی کل</th><th>وضعیت</th><th>عملیات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in page_obj %}
+          <tr>
+            <td data-label="نام کالا"><a href="{% url 'application:product_detail' p.pk %}"><b>{{ p.name }}</b></a></td>
+            <td data-label="کد مدل" dir="ltr" style="text-align: right;">{{ p.sku }}</td>
+            <td data-label="دسته‌بندی" style="color: var(--muted);">{{ p.category.name|default:"—" }}</td>
+            <td data-label="ترکیب‌ها" class="num">{{ p.variants_n }}</td>
+            <td data-label="موجودی کل" class="num">{{ p.stock_sum }}</td>
+            <td data-label="وضعیت">{% if p.is_active %}<span class="badge b-ok">فعال</span>{% else %}<span class="badge b-off">غیرفعال</span>{% endif %}</td>
+            <td data-label="عملیات">
+              <div class="row-actions">
+                <a href="{% url 'application:product_manage_edit' p.pk %}" class="btn-sm ghost">ویرایش</a>
+                <a href="{% url 'application:product_manage_delete' p.pk %}" class="btn-sm danger">حذف</a>
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="empty">{% if q %}کالایی با این جستجو پیدا نشد.{% else %}هنوز کالایی ثبت نشده است.{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% include "includes/pager.html" %}
+</section>
+{% endblock %}

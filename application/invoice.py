@@ -16,18 +16,21 @@ import uuid
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Case, IntegerField, Q, When
+from django.db.models import Case, IntegerField, Q, When , Count , Sum , Value , When 
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
-
-from .models import ProductVariant, StockTransaction, Warehouse
+from django.shortcuts import get_object_or_404, render
+from .models import ProductVariant, StockTransaction, Warehouse , Product
 from .reports import _jalali_stamp
+from django.db.models.functions import Coalesce
 
 MAX_LINES = 200
 MAX_QTY = 100000
 SEARCH_LIMIT = 20
+MAX_PRICE = 10 ** 12
+PRODUCT_SEARCH_LIMIT = 20
 
 SEARCH_FIELDS = (
     "barcode", "sku", "product__name", "product__sku",
@@ -47,13 +50,17 @@ def _variant_json(v):
         "id": v.pk,
         "product": v.product.name,
         "model_sku": v.product.sku,
+        "color_id": v.color_id,
         "color": v.color.name,
         "hex": v.color.hex_code,
+        "size_id": v.size_id,
         "size": v.size.name,
+        "size_order": v.size.sort_order,
         "sku": v.sku,
         "barcode": v.barcode or "",
         "stock": v.stock,
         "min_stock": v.min_stock,
+        "price": int(v.unit_price or 0),
     }
 
 
@@ -110,6 +117,59 @@ def variant_search(request):
 
 
 # ---------------------------------------------------------------------------
+# جستجوی محصول (نه ترکیب) و دریافت ترکیب‌های یک محصول برای پاپ‌آپ
+# ---------------------------------------------------------------------------
+@login_required
+@require_GET
+def product_search(request):
+    q = _normalize(request.GET.get("q", ""))
+    if len(q) < 2:
+        return JsonResponse({"results": []})
+
+    active_variants = ProductVariant.objects.filter(is_active=True)
+    qs = Product.objects.filter(is_active=True)
+    for token in q.split()[:5]:
+        qs = qs.filter(
+            Q(name__icontains=token) | Q(sku__icontains=token) | Q(brand__icontains=token)
+            | Q(pk__in=active_variants.filter(
+                Q(sku__icontains=token) | Q(barcode__icontains=token)
+                | Q(color__name__icontains=token) | Q(size__name__icontains=token)
+            ).values("product_id"))
+        )
+
+    qs = (
+        qs.annotate(
+            stock_sum=Coalesce(
+                Sum("variants__stock", filter=Q(variants__is_active=True)),
+                Value(0), output_field=IntegerField(),
+            ),
+            variants_n=Count("variants", filter=Q(variants__is_active=True)),
+        )
+        .filter(variants_n__gt=0)
+        .order_by("name", "pk")[:PRODUCT_SEARCH_LIMIT]
+    )
+    return JsonResponse({"results": [
+        {"id": p.pk, "name": p.name, "sku": p.sku, "brand": p.brand,
+         "stock": p.stock_sum, "variants": p.variants_n}
+        for p in qs
+    ]})
+
+
+@login_required
+@require_GET
+def product_variants(request, pk):
+    product = get_object_or_404(Product, pk=pk, is_active=True)
+    variants = (
+        product.variants.filter(is_active=True)
+        .select_related("product", "color", "size")
+        .order_by("color__name", "size__sort_order", "size__name")
+    )
+    return JsonResponse({
+        "product": {"id": product.pk, "name": product.name, "sku": product.sku, "brand": product.brand},
+        "variants": [_variant_json(v) for v in variants],
+    })
+
+# ---------------------------------------------------------------------------
 # ثبت فاکتور
 # ---------------------------------------------------------------------------
 class _InvoiceError(Exception):
@@ -154,7 +214,8 @@ def invoice_submit(request):
         return _fail(f"حداکثر {MAX_LINES} قلم در هر فاکتور مجاز است.")
 
     # ادغام ردیف‌های تکراریِ یک کالا
-    wanted = {}
+        # ادغام ردیف‌های تکراریِ یک کالا
+    wanted, prices = {}, {}
     for item in raw_items:
         try:
             vid = int(item.get("variant"))
@@ -163,7 +224,16 @@ def invoice_submit(request):
             return _fail("اطلاعات یکی از اقلام نامعتبر است.")
         if qty < 1 or qty > MAX_QTY:
             return _fail("تعداد هر قلم باید عددی مثبت (حداکثر %d) باشد." % MAX_QTY)
+        raw_price = item.get("price")
+        try:
+            price = None if raw_price in (None, "") else int(raw_price)
+        except (TypeError, ValueError):
+            return _fail("قیمت یکی از اقلام نامعتبر است.")
+        if price is not None and not (0 <= price <= MAX_PRICE):
+            return _fail("قیمت هر قلم باید بین ۰ و %d باشد." % MAX_PRICE)
         wanted[vid] = wanted.get(vid, 0) + qty
+        if price is not None:
+            prices[vid] = price
 
     code = f"F{timezone.localtime():%y%m%d}-{uuid.uuid4().hex[:5].upper()}"
     label = "فاکتور خروج" if movement == "out" else "فاکتور ورود"

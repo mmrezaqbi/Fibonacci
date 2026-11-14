@@ -1,0 +1,46 @@
+{% extends "settings_base.html" %}
+
+{% block page_subtitle %}حذف کالا{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+  .warn-box {
+    padding: 12px 14px; border-radius: 12px; font-size: .86rem; line-height: 1.9; margin-bottom: 16px;
+    color: var(--danger); background: rgba(255, 107, 122, .08); border: 1px solid rgba(255, 107, 122, .35);
+  }
+</style>
+{% endblock %}
+
+{% block settings_content %}
+<section class="card set-card">
+  <h2>حذف «{{ product.name }}»</h2>
+  <p class="lead">
+    کد مدل: <span dir="ltr">{{ product.sku }}</span> · {{ variants_n }} ترکیب رنگ/سایز · موجودی کل {{ stock_total }} عدد
+  </p>
+
+  <div class="warn-box">
+    این عملیات قابل بازگشت نیست. همه‌ی ترکیب‌های رنگ/سایز این کالا پاک می‌شوند.
+    {% if has_history %}
+      <br>این کالا <b>{{ tx_count }}</b> تراکنش ورود/خروج دارد؛ با حذف آن‌ها، گزارش‌های گذشته هم تغییر می‌کند.
+      اگر فقط نمی‌خواهید کالا نمایش داده شود، بهتر است آن را در «ویرایش» غیرفعال کنید.
+    {% endif %}
+    <br>اگر اتصال ووکامرس فعال است، محصول در سایت حذف نمی‌شود و باید از خود ووکامرس پاک شود.
+  </div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="form-errors">{% for e in form.non_field_errors %}{{ e }} {% endfor %}</div>{% endif %}
+    <div class="form-grid">
+      {% include "includes/field.html" with field=form.admin_password %}
+      {% if has_history %}
+        {% include "includes/field.html" with field=form.delete_history extra_class="check-row wide" %}
+      {% endif %}
+    </div>
+    <div class="actions-bar">
+      <button type="submit" class="btn-sm danger">حذف نهایی کالا</button>
+      <a href="{% url 'application:product_manage_list' %}" class="btn-sm ghost">انصراف</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

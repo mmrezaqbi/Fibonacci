@@ -1,7 +1,7 @@
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
-from . import reports, settings_pages, views, warehouses, woo_pages , invoice , categories
+from . import reports, settings_pages, views, warehouses, woo_pages , invoice , categories , exports
 
 app_name = "application"
 
@@ -10,6 +10,7 @@ urlpatterns = [
     path("products/", views.product_list, name="product_list"),
     path("products/new/", views.product_create, name="product_create"),
     path("products/<int:pk>/", views.product_detail, name="product_detail"),
+    path("products/export/csv/", exports.product_export_csv, name="product_export_csv"),
     path("stock/in/", views.stock_in, name="stock_in"),
     path("stock/out/", views.stock_out, name="stock_out"),
     path("warehouses/", warehouses.warehouse_list, name="warehouse_list"),
@@ -38,6 +39,9 @@ urlpatterns = [
     path("settings/users/new/", settings_pages.user_create, name="user_create"),
     path("settings/users/<int:pk>/edit/", settings_pages.user_edit, name="user_edit"),
     path("settings/users/<int:pk>/delete/", settings_pages.user_delete, name="user_delete"),
+    path("settings/products/", settings_pages.product_manage_list, name="product_manage_list"),
+    path("settings/products/<int:pk>/edit/", settings_pages.product_manage_edit, name="product_manage_edit"),
+    path("settings/products/<int:pk>/delete/", settings_pages.product_manage_delete, name="product_manage_delete"),
     path("settings/woocommerce/", woo_pages.woo_settings, name="woo_settings"),
     path("woocommerce/webhook/", woo_pages.woo_webhook, name="woo_webhook"),
     path("login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
