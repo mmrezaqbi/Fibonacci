@@ -1,0 +1,14 @@
+{% load static %}{# نصب روی گوشی (PWA): مانیفست، آیکون iOS و ثبت سرویس‌ورکر #}
+<link rel="manifest" href="{% url 'pwa_manifest' %}">
+<link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="انبار">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register("{% url 'pwa_sw' %}", { scope: "/" }).catch(function () {});
+    });
+  }
+</script>

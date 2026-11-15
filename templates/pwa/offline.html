@@ -1,0 +1,34 @@
+{% load static %}<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0e14">
+  <title>آفلاین | {{ app_name }}</title>
+  <style>
+    :root { --bg:#0b0e14; --card:rgba(22,27,38,.72); --border:rgba(255,255,255,.08); --text:#e6e9f0; --muted:#8b93a7; --primary:#6c8cff; --primary-2:#8b5cf6; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { min-height:100vh; min-height:100dvh; display:grid; place-items:center; padding:20px;
+      font-family:Vazirmatn,"Segoe UI",Tahoma,"Noto Sans Arabic",sans-serif; background:var(--bg); color:var(--text); }
+    .card { width:100%; max-width:380px; text-align:center; background:var(--card); border:1px solid var(--border);
+      border-radius:22px; padding:36px 28px; box-shadow:0 30px 80px rgba(0,0,0,.55); }
+    .icon { width:72px; height:72px; margin:0 auto 18px; border-radius:20px; display:grid; place-items:center;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2)); }
+    .icon svg { width:36px; height:36px; stroke:#fff; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    h1 { font-size:1.3rem; margin-bottom:10px; }
+    p { color:var(--muted); font-size:.92rem; line-height:1.9; margin-bottom:24px; }
+    button { width:100%; border:0; cursor:pointer; font:inherit; font-weight:600; color:#fff; padding:13px; border-radius:14px;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2)); min-height:46px; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="icon">
+      <svg viewBox="0 0 24 24"><path d="M1 1l22 22"/><path d="M16.7 11.1A11 11 0 0121 13.5"/><path d="M3 9.5a15 15 0 014.5-2.6"/><path d="M8.5 13a6 6 0 016.3-1.2"/><path d="M12 19h.01"/></svg>
+    </div>
+    <h1>اتصال به اینترنت برقرار نیست</h1>
+    <p>برای کار با سامانه انبارداری به اینترنت نیاز است تا موجودی و فاکتورها همیشه به‌روز بمانند. اتصال خود را بررسی کنید و دوباره تلاش کنید.</p>
+    <button type="button" onclick="location.reload()">تلاش دوباره</button>
+  </main>
+</body>
+</html>

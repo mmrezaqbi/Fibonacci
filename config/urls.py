@@ -19,7 +19,14 @@ from django.urls import path , include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from application import pwa
+
 urlpatterns = [
+    # PWA (نصب روی گوشی) — بدون لاگین و از ریشه‌ی سایت
+    path('manifest.webmanifest', pwa.manifest, name='pwa_manifest'),
+    path('sw.js', pwa.service_worker, name='pwa_sw'),
+    path('offline/', pwa.offline, name='pwa_offline'),
+
     path('admin/', admin.site.urls),
     path('' , include('application.urls')),
     path('accounts/' , include('accounts.urls')),
