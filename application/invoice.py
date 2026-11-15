@@ -15,6 +15,9 @@
 سربرگ فاکتور (شماره، انبار، نام و موبایل خریدار) در مدل Invoice نگه‌داری می‌شود و هر تراکنش به آن وصل است.
 
   invoice_detail   -> نمایش و چاپ دوباره‌ی یک فاکتور ثبت‌شده (از گزارش فاکتورها)
+
+سطح دسترسی: صفحه‌ی ثبت فاکتور و API ثبت آن فقط برای «انباردار» و «مدیر» است؛
+«مشاهده‌گر» فقط می‌تواند فاکتورهای ثبت‌شده را ببیند (invoice_detail).
 """
 import json
 import uuid
@@ -32,6 +35,7 @@ from django.views.decorators.http import require_GET, require_POST
 from .activity import A, log_activity
 from .invoice_utils import BUYER_NAME_MAX, clean_buyer_name, is_valid_mobile, normalize_phone
 from .models import Invoice, Product, ProductVariant, StockTransaction, StoreSettings, Warehouse
+from .permissions import role_required
 from .reports import _jalali_stamp
 
 MAX_LINES = 200
@@ -75,7 +79,7 @@ def _variant_json(v):
 # ---------------------------------------------------------------------------
 # صفحه
 # ---------------------------------------------------------------------------
-@login_required
+@role_required("keeper")
 def invoice_page(request, movement):
     warehouses = list(Warehouse.objects.filter(is_active=True))
     return render(request, "stock_invoice.html", {
@@ -201,7 +205,7 @@ def _fit_note(text):
     return text[:limit] if limit else text
 
 
-@login_required
+@role_required("keeper")
 @require_POST
 def invoice_submit(request):
     try:
