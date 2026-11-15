@@ -179,13 +179,13 @@
     <!-- دسترسی سریع -->
     <section class="actions">
       {% if request.user|has_role:"keeper" %}
-      <a href="{% url 'application:stock_in' %}" class="action">
+      <a href="{% url 'application:invoice_in' %}" class="action">
         <div class="stat-icon i-green"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
         ثبت ورود کالا
       </a>
       {% endif %}
       {% if request.user|has_role:"keeper" %}
-      <a href="{% url 'application:stock_out' %}" class="action">
+      <a href="{% url 'application:invoice_out' %}" class="action">
         <div class="stat-icon i-yellow"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></div>
         ثبت خروج کالا
       </a>

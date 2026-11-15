@@ -1,373 +1,379 @@
-<!--
-  Fibonacci — Clothing Warehouse Management System
-  Repository: https://github.com/mmrezaqbi/Fibonacci
--->
-
 <div align="center">
 
 # 🧵 Fibonacci
 
 ### Clothing Warehouse Management System
 
-A Django-powered inventory and warehouse management application for clothing businesses — built around product variants, color/size stock tracking, and auditable inventory movements.
+**A Persian (RTL) Django application for apparel businesses — color × size stock tracking, multi-line invoices with barcode scanning, Jalali-dated reports, Excel export, and two-way WooCommerce sync.**
 
 <p>
-  <a href="https://github.com/mmrezaqbi/Fibonacci"><img src="https://img.shields.io/badge/Project-Fibonacci-7c3aed?style=for-the-badge" alt="Fibonacci project"></a>
-  <img src="https://img.shields.io/badge/Python-Django-092e20?style=for-the-badge&logo=django&logoColor=white" alt="Django">
-  <img src="https://img.shields.io/badge/Database-SQLite-003b57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite">
+  <img src="https://img.shields.io/badge/Python-3.12%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.12+">
+  <img src="https://img.shields.io/badge/Django-6.1.2-092E20?style=for-the-badge&logo=django&logoColor=white" alt="Django 6.1.2">
+  <img src="https://img.shields.io/badge/MySQL-Database-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL">
+  <img src="https://img.shields.io/badge/WooCommerce-Sync-96588A?style=for-the-badge&logo=woocommerce&logoColor=white" alt="WooCommerce sync">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="MIT License"></a>
 </p>
 
-[Features](#-features) • [Tech Stack](#-tech-stack) • [Getting Started](#-getting-started) • [Usage](#-usage) • [Project Structure](#-project-structure) • [Security](#-security-notice)
+[Features](#-features) ·
+[Quick Start](#-quick-start) ·
+[Roles](#-roles--permissions) ·
+[WooCommerce](#-woocommerce-integration) ·
+[Data Model](#-data-model) ·
+[Routes](#-routes) ·
+[Tests](#-tests) ·
+[Security](#-security--production-notes)
 
 </div>
 
 ---
 
-## ✨ Overview
+## 📖 Overview
 
-**Fibonacci** is a web-based warehouse and inventory management system designed for clothing shops and apparel warehouses.
+**Fibonacci** is a web-based warehouse and inventory system built for clothing shops and apparel warehouses.
+Instead of tracking one stock number per product, it tracks stock for every **product × color × size** combination (a *variant*), and records every change as an immutable **stock transaction**. Transactions can be grouped into printable **invoices** with buyer details, and the whole system can be kept in sync with a **WooCommerce** store.
 
-Instead of treating every product as a single stock number, Fibonacci manages inventory at the **product variant** level — each combination of product, color, and size has its own SKU and stock quantity. Inventory changes are recorded as transactions, providing a history of stock activity.
+The interface is fully **Persian (RTL)**, uses the **Asia/Tehran** time zone, and shows all dates in the **Jalali (Shamsi) calendar**.
 
-The application includes a Persian (Farsi) interface and localized date handling for the Iranian calendar.
+## ✨ Features
 
-## 🚀 Features
+### 📦 Products & variants
+- Products with name, model SKU, brand, category, gender (men / women / boy / girl / unisex), season, material, base price, description, image, and active flag.
+- Reusable **colors** (name, short code, HEX) and **sizes** (with display order).
+- On product creation, select colors and sizes and fill a **color × size matrix** with initial quantities — variants are generated automatically and initial stock is recorded as *IN* transactions.
+- Auto-generated variant SKUs in the form `MODELSKU-COLORCODE-SIZE`, optional barcode, optional per-variant price, and a per-variant **minimum-stock threshold** (default `3`).
+- Product detail page with a color × size stock heat-matrix, row/column totals, stock value, and recent transactions.
+- Search by name, model SKU, brand, variant SKU, or barcode; filter by category, gender and stock status (in stock / low / out); paginated lists.
 
-### 📦 Product & Variant Management
-- Create and manage clothing products.
-- Store product details such as name, SKU, brand, category, gender, season, material, price, description, and image.
-- Organize products by category.
-- Define reusable colors and sizes.
-- Generate product variants from selected color × size combinations.
-- Assign a unique SKU to each variant and optionally store a barcode.
-- Set a minimum-stock threshold for each variant.
-- Activate or deactivate products and variants.
+### 🔄 Stock movements
+- **Stock In / Stock Out** matrix forms: pick a product, enter quantities per color/size, submit.
+- Stock-out is validated against available stock; multi-line operations run inside a **single database transaction** (all lines succeed or none do).
+- Row-level locking (`select_for_update`) protects against concurrent over-selling.
+- Transactions are **immutable** — saved records cannot be edited; corrections are made with compensating transactions.
 
-### 🧮 Inventory Tracking
-- Track stock separately for each product color/size variant.
-- Register incoming stock and outgoing stock.
-- Prevent outgoing transactions from exceeding available stock.
-- Update stock automatically when a transaction is recorded.
-- Record the warehouse, quantity, transaction type, note, timestamp, and user who created the transaction.
-- Keep stock transactions immutable after creation; corrections should be recorded as compensating transactions.
-- Use database transactions to keep multi-line stock operations consistent.
+### 🧾 Invoices (multi-line, barcode-ready)
+- Dedicated **invoice screens** for stock-in and stock-out with live AJAX product/variant search.
+- **Barcode scanner support** — exact barcode/SKU matching, with Persian/Arabic digits normalized automatically.
+- Per-line unit price, up to 200 lines per invoice, atomic submission, and automatic invoice codes (`F<yymmdd>-XXXXX`).
+- Stock-out invoices require the **buyer's name and a valid Iranian mobile number** (normalized to `09xxxxxxxxx`).
+- Re-viewable and **printable** invoices with the store name in the header.
 
-> **Inventory model:** stock quantity is stored on each product variant. Transactions are associated with a warehouse, but the current implementation does not maintain a separate stock balance per warehouse.
+### 🏬 Warehouses
+- Multiple warehouses with address and active/inactive state (warehouses with history can only be deactivated, not deleted).
+- Warehouse list and detail pages show per-warehouse balances (total in, total out, net), variants held, and recent movements.
 
-### 📊 Dashboard
-- View the number of active products.
-- See total stock across active variants.
-- Monitor low-stock variants.
-- Review today's inventory transactions.
-- Access recent stock activity.
+> **Stock model:** `ProductVariant.stock` is the global balance. Per-warehouse balances are *derived* from transactions (sum of IN − sum of OUT for that warehouse).
 
-### 🔎 Product Search & Filtering
-- Search products by name, model SKU, brand, variant SKU, or barcode.
-- Filter by category and gender.
-- Filter products by stock status.
-- Browse results with pagination.
-- View product details, including color/size stock matrices and recent transactions.
-
-### 📈 Reports & CSV Export
-- Review inventory transaction history.
-- Filter transactions by search term, date range, transaction type, and warehouse.
-- View stock reports with category, gender, and stock-status filters.
-- Export transaction and stock reports to CSV.
-- Format CSV output for Persian/Excel compatibility.
-- Accept Jalali (Persian) and Gregorian dates in report filters.
-
-### 🛠️ Django Admin
-- Manage products, categories, warehouses, colors, sizes, variants, and users.
-- Inspect product stock matrices.
-- Search and filter product variants.
-- View stock transaction history.
-- Prevent editing or deleting recorded inventory transactions through the admin interface.
-
-### 👤 User Accounts
-- Custom Django user model.
-- User profile fields for phone number, country code, avatar, address, birthday, gender, and additional identity/profile information.
-- Login-protected application pages.
-
-## 🧰 Tech Stack
-
-| Component | Technology |
+### 📊 Reports
+| Report | What it shows |
 |---|---|
-| Backend | Python / Django |
-| Database (default) | SQLite |
-| Frontend | Django Templates, HTML, CSS, JavaScript |
-| Static assets | CSS and JavaScript |
-| Media | Django media files / uploaded product images |
-| Localization | Persian (Farsi), `Asia/Tehran`, Jalali date utilities |
-| Admin | Django Admin |
+| **Transactions** | Every in/out movement, filterable by text, date range, type and warehouse |
+| **Stock** | Per-variant stock, status (in stock / low / out), unit price and stock value |
+| **Invoices** | All invoices, searchable by code, buyer name or mobile number |
+| **Sales** | Quantity and revenue grouped by **day**, **Jalali month**, or **product** |
+| **Assets** | Inventory value by product and category (stock × base price) |
+| **User activity** | Audit log of logins and actions with IP address *(admin only)* |
 
-The project settings currently identify **Django 6.1.2** as the generation version. The repository does not currently include a dependency lockfile or `requirements.txt`; install a compatible Django version and Pillow for image handling.
+- Filters accept **Jalali or Gregorian** dates.
+- Every report exports to **Excel (.xlsx)** or **CSV**, respecting the active filters.
+- The `.xlsx` writer uses only the Python standard library (RTL sheets, frozen header row, text-safe cells) — no `openpyxl` needed.
+- CSV output includes a UTF-8 BOM for Persian Excel compatibility and guards against formula injection.
+- **Print mode** renders up to 5,000 filtered rows on one page with the store name and Jalali timestamp.
 
-## 🖥️ Getting Started
+### ⚙️ Administration
+- Manage colors, sizes, warehouses, categories, and users with role assignment.
+- Edit or delete products from a dedicated management area (deletion requires password confirmation).
+- Store name setting (printed on invoices and reports).
+- Full **activity log**: logins, logouts, invoices, stock movements, product/category/settings/user changes.
+- Standard Django Admin at `/admin/`.
 
-Follow these steps to run Fibonacci locally for development.
+### 🛒 WooCommerce integration
+Two-way stock synchronization with a WooCommerce store — see [WooCommerce Integration](#-woocommerce-integration).
+A WooCommerce-compatible **product import CSV** can also be exported from the product list.
+
+## 🧰 Tech stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Python 3.12+, Django 6.1.2 |
+| Database | MySQL (via `mysqlclient`) |
+| Images | Pillow |
+| Frontend | Django templates, vanilla JavaScript, custom CSS (RTL) |
+| Localization | `fa-ir`, `Asia/Tehran`, built-in Jalali date utilities |
+| Spreadsheets | Custom stdlib-only XLSX writer |
+| Integrations | WooCommerce REST API + signed webhooks |
+
+Dependencies (`requirements.txt`):
+
+```text
+Django==6.1.2
+Pillow
+mysqlclient
+```
+
+## 🚀 Quick start
 
 ### Prerequisites
-
-- Python **3.12 or newer** (use a Python version compatible with your installed Django release).
-- `pip`
+- Python **3.12+**
+- **MySQL** 8+ (or compatible MariaDB)
 - Git
+- Build tools for `mysqlclient` — on Debian/Ubuntu:
+  ```bash
+  sudo apt install build-essential pkg-config default-libmysqlclient-dev
+  ```
 
-### 1. Clone the repository
+### 1. Clone
 
 ```bash
 git clone https://github.com/mmrezaqbi/Fibonacci.git
 cd Fibonacci
 ```
 
-### 2. Create and activate a virtual environment
-
-**Windows (PowerShell):**
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-**Windows (Command Prompt):**
-
-```bat
-python -m venv .venv
-.venv\Scripts\activate.bat
-```
-
-**macOS / Linux:**
+### 2. Create a virtual environment
 
 ```bash
+# macOS / Linux
 python3 -m venv .venv
 source .venv/bin/activate
+
+# Windows (PowerShell)
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
 ### 3. Install dependencies
 
 ```bash
-pyton -m pip install --upgrade pip
-python -m pip install "Django==6.1.2" Pillow
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-> If your environment uses a different Django version, make sure it is compatible with the project and update the command accordingly. Add all project dependencies to a requirements.txt before sharing or deploying the application.
+### 4. Create the database
 
-### 4. Apply database migrations
+```sql
+CREATE DATABASE fibonacci CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+Then open `config/settings.py` and set the `DATABASES["default"]` values (`NAME`, `USER`, `PASSWORD`, `HOST`, `PORT`) for your own MySQL server.
+Use credentials of your own — and see [Security & production notes](#-security--production-notes) for keeping them out of source control.
+
+### 5. Migrate and create an admin
 
 ```bash
-python manage.py makemigrations
 python manage.py migrate
-```
-
-The default configuration uses SQLite and creates the database file locally.
-
-### 5. Create an administrator account
-
-```bash
 python manage.py createsuperuser
 ```
 
-Follow the prompts to set your admin username and password.
+Migrations are already committed, so `makemigrations` is not required.
 
-### 6. Start the development server
+### 6. Run
 
 ```bash
 python manage.py runserver
 ```
 
-Open the application:
+| URL | Purpose |
+|---|---|
+| http://127.0.0.1:8000/ | Application (login required) |
+| http://127.0.0.1:8000/admin/ | Django Admin |
 
-- **Application:** http://127.0.0.1:8000/
-- **Django Admin:** http://127.0.0.1:8000/admin/
+### 7. First-time setup
 
-The development server is intended for local development only.
+Sign in with your superuser account, then (under **Settings**) add the basic data the workflow depends on:
 
-## 🗂️ Project Structure
+1. **Warehouses** — at least one active warehouse.
+2. **Colors** — name, short code (used in SKUs, e.g. `BLK`), and HEX value.
+3. **Sizes** — name and display order.
+4. **Store name** — printed on invoices and reports.
+5. **Categories** — to organize products.
 
-```text
-Fibonacci/
-├── accounts/                 # Custom user model, authentication and account admin
-│   ├── models.py
-│   ├── views.py
-│   ├── urls.py
-│   └── admin.py
-├── application/              # Main inventory and warehouse application
-│   ├── models.py             # Products, variants, stock transactions, warehouses
-│   ├── views.py              # Dashboard, product pages, stock movements
-│   ├── forms.py              # Product and stock movement forms
-│   ├── reports.py            # Stock and transaction reports / CSV exports
-│   ├── admin.py              # Custom Django Admin configuration
-│   ├── dates.py               # Jalali/Gregorian date parsing and formatting
-│   ├── jalali.py              # Jalali calendar conversion utilities
-│   └── urls.py
-├── config/                    # Django project configuration
-│   ├── settings.py
-│   ├── urls.py
-│   ├── asgi.py
-│   └── wsgi.py
-├── extensions/                # Shared date and utility helpers
-├── templates/                 # Django HTML templates
-├── static/                    # CSS and JavaScript assets
-├── media/                     # Uploaded product and profile media
-├── manage.py                  # Django management entry point
-├── LICENSE                    # MIT license
-└── README.md
+Then add your first product from **Products → New product**.
+
+## 👥 Roles & permissions
+
+Roles are stored as Django groups (created automatically when first needed) and defined in [`application/permissions.py`](application/permissions.py).
+
+| Role | Who | Access |
+|---|---|---|
+| **Admin (مدیر)** | Django superuser | Everything: users, settings (colors, sizes, warehouses, store), WooCommerce, product edit/delete, activity report |
+| **Keeper (انباردار)** | Member of group `انباردار` | Create products, register stock in/out, export the WooCommerce product CSV, plus all viewer access |
+| **Viewer (مشاهده‌گر)** | Member of group `مشاهده‌گر` or no group | Browse products, warehouses and reports |
+
+## 🛒 WooCommerce integration
+
+```mermaid
+flowchart LR
+    subgraph Fibonacci
+        A[Stock transaction saved]
+        B[Order applied as OUT / IN transaction]
+    end
+    subgraph WooCommerce
+        C[Variable product + variations]
+        D[Customer order]
+    end
+    A -- "push absolute stock count (background thread)" --> C
+    D -- "signed webhook  or  manage.py woo_pull" --> B
 ```
 
-## 🧭 Usage
+**Fibonacci → WooCommerce**
+- After every stock movement, the variant's current stock is pushed to WooCommerce as an **absolute number** (not a delta).
+- Missing products are created as **draft variable products** (attributes `رنگ` / `سایز`), or linked to an existing product with the same SKU. Review and publish them in WooCommerce.
+- A **Full sync** action creates/links every active product and sends all stock levels.
+- Sync runs in a background thread and never blocks or breaks stock registration; failures are written to a sync log.
 
-### Initial setup
+**WooCommerce → Fibonacci**
+- Orders in `processing`, `on-hold` or `completed` status create **OUT** transactions in the configured default warehouse.
+- Orders that become `cancelled`, `refunded` or `failed` create compensating **IN** transactions.
+- Processing is **idempotent** (each order is tracked once) and orders created before sync was enabled are never deducted.
 
-After creating your administrator account, open Django Admin and add the basic data needed by the inventory workflow:
+### Setup
 
-1. **Categories** — organize your clothing products.
-2. **Warehouses** — define the warehouse locations used on stock transactions.
-3. **Colors** — add colors and, where applicable, a short color code and HEX value.
-4. **Sizes** — define sizes and their display order.
-5. **Products** — create products and configure their attributes and variants.
+1. In WooCommerce, create **REST API keys** with read/write permission.
+2. In Fibonacci open **Settings → WooCommerce** (admin only) and enter the site URL, consumer key and consumer secret, a webhook secret, and the default warehouse; tick *enabled*.
+3. Use **Test connection**, then **Full sync**.
+4. *(Recommended)* In WooCommerce → Settings → Advanced → Webhooks, create webhooks for **Order created** and **Order updated** with delivery URL `https://<your-host>/woocommerce/webhook/` and the same secret. Requests are verified with HMAC-SHA256 (`X-WC-Webhook-Signature`).
+5. *(Fallback / polling)* Schedule the pull command, e.g. with cron:
 
-### Create a product
+   ```bash
+   */5 * * * * cd /path/to/Fibonacci && .venv/bin/python manage.py woo_pull
+   ```
 
-1. Open the product creation page.
-2. Enter the product's name, SKU, category, brand, gender, season, material, price, and other available details.
-3. Select one or more colors and sizes.
-4. Set the minimum-stock threshold.
-5. If entering initial stock, select a warehouse and fill in the quantities for the relevant color/size combinations.
-6. Save the product.
+## 🧱 Data model
 
-The application creates the selected product variants and records initial stock as incoming inventory transactions.
-
-### Register stock movements
-
-- **Stock In:** select a product, choose a warehouse, enter quantities for the relevant variants, and submit.
-- **Stock Out:** select a product and warehouse, enter outgoing quantities, and submit. The application validates stock availability before recording the movement.
-
-Stock changes are recorded in the transaction history. Recorded transactions are designed to remain immutable.
-
-### Review reports
-
-Use the reports area to review inventory movements or stock levels. Apply available filters and export the resulting data as CSV when needed.
-
-## 🧱 Core Data Model
-
-The main inventory entities are:
+```mermaid
+erDiagram
+    CATEGORY ||--o{ PRODUCT : classifies
+    PRODUCT ||--|{ PRODUCT_VARIANT : has
+    COLOR ||--o{ PRODUCT_VARIANT : "color of"
+    SIZE ||--o{ PRODUCT_VARIANT : "size of"
+    PRODUCT_VARIANT ||--o{ STOCK_TRANSACTION : "moves"
+    WAREHOUSE ||--o{ STOCK_TRANSACTION : "stores"
+    INVOICE ||--o{ STOCK_TRANSACTION : "groups"
+    WAREHOUSE ||--o{ INVOICE : "issued from"
+    CUSTOM_USER ||--o{ STOCK_TRANSACTION : "records"
+    CUSTOM_USER ||--o{ ACTIVITY_LOG : "performs"
+```
 
 | Model | Purpose |
 |---|---|
-| `Category` | Product classification |
-| `Warehouse` | Warehouse/location metadata |
-| `Color` | Reusable color definitions |
-| `Size` | Reusable size definitions |
-| `Product` | General clothing product information |
-| `ProductVariant` | Product + color + size combination with its own SKU and stock |
-| `StockTransaction` | Immutable incoming/outgoing stock movement record |
-| `CustomUser` | Application user and profile information |
-| `CountryCode` | International phone country codes |
+| `Category`, `Warehouse`, `Color`, `Size` | Reference data |
+| `Product` | Model-level product info (name, SKU, brand, gender, season, base price, image) |
+| `ProductVariant` | Unique product + color + size, with its own SKU, barcode, stock and minimum stock |
+| `StockTransaction` | Immutable IN/OUT movement (quantity, warehouse, note, unit price, user, invoice) |
+| `Invoice` | Invoice header: code, type, warehouse, buyer name/mobile, note |
+| `ActivityLog` | Who did what, when, and from which IP |
+| `StoreSettings` | Store name (single row) |
+| `WooSettings`, `WooProductLink`, `WooVariantLink`, `WooOrder`, `WooLog` | WooCommerce connection, ID links, processed orders and sync log |
+| `accounts.CustomUser`, `accounts.CountryCode` | Custom user with profile fields, phone country codes |
 
-### Stock transaction flow
+## 🗂️ Project structure
 
 ```text
-Product
-  └── ProductVariant (color + size)
-        ├── SKU / barcode
-        ├── Current stock
-        └── StockTransaction
-              ├── IN  → increases variant stock
-              └── OUT → decreases variant stock
+Fibonacci/
+├── accounts/                  # Custom user model, profile fields, auth admin
+├── application/               # Core inventory app
+│   ├── models.py              # Products, variants, transactions, invoices, Woo models
+│   ├── views.py               # Dashboard, product list/detail/create, stock forms
+│   ├── invoice.py             # Multi-line invoices + AJAX search APIs
+│   ├── warehouses.py          # Warehouse list/detail (derived balances)
+│   ├── categories.py          # Category management
+│   ├── reports.py             # Reports, filters, print mode, CSV/XLSX export
+│   ├── exports.py             # WooCommerce-format product CSV
+│   ├── xlsx.py                # Dependency-free .xlsx writer
+│   ├── permissions.py         # Roles and role_required decorator
+│   ├── settings_pages.py      # Admin settings: colors, sizes, users, products
+│   ├── woo_client.py          # WooCommerce REST client
+│   ├── woo_sync.py            # Two-way stock/order synchronization
+│   ├── woo_pages.py           # WooCommerce settings page + webhook endpoint
+│   ├── jalali.py, dates.py    # Jalali conversion and date parsing
+│   ├── templatetags/          # Jalali, money and navigation template tags
+│   ├── management/commands/
+│   │   └── woo_pull.py        # Scheduled order pull
+│   ├── migrations/
+│   └── tests.py
+├── config/                    # Django settings, URLs, ASGI/WSGI
+├── extensions/                # Shared Jalali/date helpers
+├── templates/                 # HTML templates (reports, settings, invoices, …)
+├── static/                    # css/base.css, js/base.js
+├── media/                     # Uploaded product images and avatars
+├── manage.py
+├── requirements.txt
+└── LICENSE
 ```
 
-Stock-out operations validate available quantities. Multi-line stock movement forms use database transactions so a failed line can roll back the complete operation.
+## 🧭 Routes
 
-## 🖥️ Configuration
-
-Project configuration is located in:
-
-- `config/settings.py` — Django settings, database, installed apps, locale, static/media configuration.
-- `config/urls.py` — root URL outing.
-- `application/urls.py` — inventory, product, movement, and report routes.
-- `accounts/urls.py` — account routes.
-
-### Database
-
-SQLite is configured by default. For production, configure a supported production database and keep credentials outside source control.
-
-### Static and media files
-
-- Static files are served from `/static/`.
-- Uploaded media is served from `/media/` in the current development configuration.
-- Configure static and media storage appropriately for production deployment.
-
-## 🔐 Security Notice
-
-**This repository is currently configured for development, not production.** Before deploying it publicly:
-
-- Replace the committed development Django `SECRET_KEY` and load the production secret from environment variables.
-- Set `DEBUG = False`.
-- Replace the wildcard `ALLOWED_HOSTS` setting with your actual hostnames.
-- Configure HTTPS, secure cookies, CSRF trusted origins, and appropriate security headers.
-- Configure production static/media serving and database credentials.
-- Review user profile fields and access permissions, especially fields containing personal information.
-- Do not commit real user data, uploaded private files, database files, or production secrets.
-
-See the [Django deployment checklist](https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/) before going live.
+| Path | Description |
+|---|---|
+| `/` | Dashboard — active products, total stock, low-stock items, today's activity |
+| `/products/` · `/products/new/` · `/products/<id>/` | List, create, detail |
+| `/products/export/csv/` | WooCommerce-format product export |
+| `/stock/in/` · `/stock/out/` | Matrix stock forms |
+| `/stock/in/invoice/` · `/stock/out/invoice/` | Multi-line invoice screens |
+| `/warehouses/` · `/warehouses/<id>/` | Warehouse overview and detail |
+| `/categories/` | Category management |
+| `/reports/transactions/` · `stock/` · `invoices/` · `sales/` · `assets/` · `activity/` | Reports (add `?export=xlsx`, `?export=csv` or `?print=1`) |
+| `/reports/invoices/<id>/` | View / reprint an invoice |
+| `/settings/…` | Colors, sizes, warehouses, users, products, store, WooCommerce *(admin)* |
+| `/api/variants/search/` · `/api/products/search/` · `/api/product-variants/<id>/` · `/api/invoice/submit/` | JSON endpoints used by the invoice screens |
+| `/woocommerce/webhook/` | WooCommerce webhook receiver |
+| `/login/` · `/logout/` | Authentication |
+| `/admin/` | Django Admin |
 
 ## 🧪 Tests
-
-Run Django's test discovery with:
 
 ```bash
 python manage.py test
 ```
 
-The repository currently contains minimal test scaffolding. Add model, stock transaction, permissions, and report tests as the project evolves.
+The suite in `application/tests.py` covers buyer/phone normalization, money formatting, navigation highlighting, invoice creation and validation, invoice search, store settings permissions, sales/asset/activity reports, XLSX/CSV export validity, filter-aware exports, and print mode.
+
+## 🔐 Security & production notes
+
+The repository is configured for **local development**. Before deploying:
+
+- **Move secrets out of `config/settings.py`.** The Django `SECRET_KEY` and the database credentials are currently hard-coded — load them from environment variables, and **rotate any credential that has already been committed**.
+- Set `DEBUG = False` and replace `ALLOWED_HOSTS = ['*']` with your real hostnames.
+- Serve over **HTTPS**; enable secure cookies, `CSRF_TRUSTED_ORIGINS` and security headers.
+- Serve static files and media properly (e.g. `collectstatic` + a web server); Django's media route is for development only.
+- Use a dedicated, least-privilege MySQL user instead of `root`.
+- WooCommerce consumer keys/secrets are stored in the database — restrict database and admin access accordingly.
+- User profiles include personal fields (phone, national code, address, …) — handle them according to your privacy requirements.
+- Do not commit real data, uploaded files, or `.env` files.
+
+See the [Django deployment checklist](https://docs.djangoproject.com/en/stable/howto/deployment/checklist/).
 
 ## 🛣️ Roadmap
 
-Potential next steps for the project:
-
-- [ ] Add a pinned `requirements.txt` and dependency management.
-- [ ] Add automated tests for stock consistency and concurrent stock movements.
-- [ ] Add warehouse-specific stock balances if multiple warehouses need independent inventory.
-- [ ] Add role-based permissions for warehouse operators and managers.
-- [ ] Add deployment configuration and environment-based settings.
-- [ ] Add screenshots or a short demo GIF to showcase the interface.
-- [ ] Add CI checks for formatting, linting, and tests.
+- [ ] Environment-based settings (`.env`) and production configuration
+- [ ] Per-warehouse stock balances stored natively (currently derived)
+- [ ] Stock transfers between warehouses
+- [ ] Expanded test coverage (accounts, WooCommerce sync, concurrency)
+- [ ] CI pipeline (lint + tests) and Docker setup
+- [ ] Screenshots / demo GIF
 
 ## 🤝 Contributing
 
-Contributions, bug reports, and feature suggestions are welcome.
+1. Fork the repository and create a branch: `git checkout -b feature/your-feature`
+2. Make your changes and add tests where appropriate.
+3. Run `python manage.py test`.
+4. Open a Pull Request describing the change.
 
-1. Fork the repository.
-2. Create a feature branch:
-   ```bash
-   git checkout -b feature/your-feature
-   ```
-3. Make your changes and add tests where appropriate.
-4. Run the test suite:
-   ```bash
-   python manage.py test
-   ```
-5. Commit your changes and open a Pull Request.
-
-For significant changes, open an issue first to discuss the proposed approach.
+For larger changes, please open an issue first to discuss the approach.
 
 ## 📄 License
 
-Fibonacci is distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
+Released under the **MIT License** — see [LICENSE](LICENSE).
 
 ## 👨‍💻 Author
 
-**Mohamad Reza Qarebaqi**
-
-- GitHub: [@mmrezaqbi](https://github.com/mmrezaqbi)
-- Repository: [mmrezaqbi/Fibonacci](https://github.com/mmrezaqbi/Fibonacci)
+**Mohamad Reza Qarebaqi** — [@mmrezaqbi](https://github.com/mmrezaqbi)
 
 ---
 
 <div align="center">
 
-**Built with Django · Designed for clothing inventory workflows**
+Built with Django · Designed for clothing inventory workflows
 
-If Fibonacci is useful to you, consider giving the repository a ⭐
+⭐ If Fibonacci is useful to you, consider starring the repository.
 
 </div>
